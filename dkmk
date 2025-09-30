@@ -1,0 +1,6 @@
+#! /bin/bash
+
+if ! python3 -m compileall python; then exit 1; fi
+
+docker pull alpine:3.22
+docker image build $* -t handshake-mailserver .

@@ -1,0 +1,5 @@
+::respawn:/usr/local/bin/start_syslogd
+::respawn:/usr/sbin/postfix start-fg >/tmp/postfix.log 2>&1
+::respawn:/usr/sbin/inetd -f > /tmp/inetd.log 2>&1
+::respawn:/usr/bin/stunnel >/dev/null 2>&1
+::respawn:/usr/sbin/saslauthd -a sasldb -c -d >/tmp/sasld.log 2>&1

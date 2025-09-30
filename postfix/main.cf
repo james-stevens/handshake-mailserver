@@ -1,0 +1,35 @@
+compatibility_level = 3.10
+queue_directory = /opt/data/postfix/spool
+command_directory = /usr/sbin
+daemon_directory = /usr/libexec/postfix
+data_directory = /opt/data/postfix/master
+mail_owner = postfix
+mydomain = anon.webmail
+myorigin = $mydomain
+unknown_local_recipient_reject_code = 550
+mynetworks = 192.168.0.0/16, 127.0.0.0/8, 172.16.0.0/32
+smtpd_relay_restrictions = permit_mynetworks, permit_sasl_authenticated, reject_unauth_destination
+
+debug_peer_level = 2
+debugger_command =
+         PATH=/bin:/usr/bin:/usr/local/bin:/usr/X11R6/bin
+         ddd $daemon_directory/$process_name $process_id & sleep 5
+
+sendmail_path = /usr/sbin/sendmail
+newaliases_path = /usr/bin/newaliases
+mailq_path = /usr/bin/mailq
+setgid_group = postdrop
+html_directory = no
+manpage_directory = /usr/share/man
+sample_directory = /etc/postfix
+readme_directory = /usr/share/doc/postfix/readme
+inet_protocols = ipv4
+meta_directory = /etc/postfix
+shlib_directory = /usr/lib/postfix
+
+smtpd_tls_cert_file = /opt/data/pems/server.pem
+smtpd_tls_key_file = /opt/data/pems/server.pem
+
+mydestination = $myhostname, localhost.$mydomain, localhost, $mydomain, lmdb:/opt/data/postfix/data/relay_domains
+
+smtpd_tls_security_level = may

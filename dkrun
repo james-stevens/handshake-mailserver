@@ -1,0 +1,7 @@
+#! /bin/sh
+
+docker run \
+	-m 1g \
+	-v /opt/data/handshake-mailserver:/opt/data \
+	-p 25:25 -p 143:143 -p 110:110 -p 993:993 -p 995:995 \
+	-it handshake-mailserver $*

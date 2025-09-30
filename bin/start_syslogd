@@ -1,0 +1,11 @@
+#! /bin/sh
+##########################################################################
+#    (c) Copyright 2021-2025 JRCS Ltd - All Rights Reserved              #
+##########################################################################
+
+if test "${SYSLOG_SERVER}"
+	then
+		exec /sbin/syslogd -n -R ${SYSLOG_SERVER}
+	else
+		exec /sbin/syslogd -n -O -
+	fi

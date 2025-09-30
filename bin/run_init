@@ -1,0 +1,27 @@
+#! /bin/sh
+
+mkdir -p /opt/data/pems
+
+if ! test -f /opt/data/pems/server.pem
+	then
+		/usr/local/python/make_server_pem.py -f lord.webmail -c GB -l London -o dot-WebMail -u Mail -s London > /opt/data/pems/server.pem
+	fi
+
+chown root:mail /opt/data/pems/server.pem
+
+for dir in spool master data
+do
+	mkdir -p /opt/data/postfix/${dir}
+	chown postfix:mail /opt/data/postfix/${dir}
+done
+
+if ! test -f /opt/data/postfix/data/relay_domains
+	then
+		touch /opt/data/postfix/data/relay_domains
+	fi
+
+postalias /opt/data/postfix/data/relay_domains
+
+postfix set-permissions
+
+exec /sbin/init
