@@ -9,7 +9,7 @@ if ! test -f /opt/data/pems/server.pem
 
 chown root:mail /opt/data/pems/server.pem
 
-for dir in spool master data
+for dir in spool master data mailboxes
 do
 	mkdir -p /opt/data/postfix/${dir}
 	chown postfix:mail /opt/data/postfix/${dir}

@@ -1,7 +1,8 @@
 #! /bin/sh
 
-docker run \
+docker run --read-only \
 	-m 1g \
+	--dns 192.168.8.110 \
 	-v /opt/data/handshake-mailserver:/opt/data \
 	-p 25:25 -p 143:143 -p 110:110 -p 993:993 -p 995:995 \
 	-it handshake-mailserver $*

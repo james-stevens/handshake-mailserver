@@ -3,6 +3,7 @@ queue_directory = /opt/data/postfix/spool
 command_directory = /usr/sbin
 daemon_directory = /usr/libexec/postfix
 data_directory = /opt/data/postfix/master
+mail_spool_directory = /opt/data/postfix/mailboxes
 mail_owner = postfix
 mydomain = anon.webmail
 myorigin = $mydomain
