@@ -7,7 +7,6 @@ RUN apk upgrade
 
 RUN rm -rf /run
 RUN ln -s /dev/shm /run
-RUN mkdir /run/policy_subst
 RUN apk add nginx curl
 RUN addgroup nginx daemon
 
@@ -27,6 +26,13 @@ RUN ln -s /opt/data/sasl2/sasldb2 /etc/sasl2/sasldb2
 COPY config/inittab /etc/
 COPY config/inetd.conf /etc/
 COPY config/stunnel.conf /etc/stunnel/
+
+RUN mkdir /usr/local/etc
+COPY config/passwd /usr/local/etc
+COPY config/shadow /usr/local/etc
+
+RUN ln -fns /opt/data/etc/passwd /etc/passwd
+RUN ln -fns /opt/data/etc/shadow /etc/shadow
 
 COPY bin /usr/local/bin/
 
