@@ -4,7 +4,6 @@
 """ Generate a Key set, CA, sign the keys & make a TLSA record """
 
 import os
-import json
 import subprocess
 import tempfile
 import argparse
@@ -14,10 +13,6 @@ CA_BITS = 4096
 KEY_BITS = 2048
 
 REQUIRED_FILES = ["host.crt", "my_ca.pem", "host.key", "my_ca.key"]
-
-
-def make_tlsa_json(injs):
-    return make_tlsa(injs["fqdn"], injs["l"], injs["o"], injs["ou"], injs["st"], injs["c"])
 
 
 def make_cmds(tmpdir):
@@ -100,5 +95,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ok, reply = make_pem(args.fqdn, args.location, args.organization, args.organizational_unit, args.state,
-                          args.country)
+                         args.country)
     print("\n".join(reply))
