@@ -35,6 +35,7 @@ RUN ln -fns /opt/data/etc/passwd /etc/passwd
 RUN ln -fns /opt/data/etc/shadow /etc/shadow
 
 COPY bin /usr/local/bin/
+COPY htdocs /usr/local/htdocs/
 
 COPY python /usr/local/python
 RUN python3 -m compileall /usr/local/python
