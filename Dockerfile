@@ -19,10 +19,12 @@ RUN postalias /etc/postfix/aliases
 RUN apk add stunnel busybox-extras cyrus-sasl imap 
 RUN apk add ldns-tools openssl
 RUN apk add python3
+RUN apk add php84-fpm php84-curl php84-iconv php84-dom
 
 RUN mkdir -p /etc/sasl2
 RUN ln -s /opt/data/sasl2/sasldb2 /etc/sasl2/sasldb2
 
+COPY config/default.conf /etc/nginx/http.d/default.conf
 COPY config/inittab /etc/
 COPY config/inetd.conf /etc/
 COPY config/stunnel.conf /etc/stunnel/
