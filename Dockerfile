@@ -45,6 +45,7 @@ COPY config/default.conf /etc/nginx/http.d/default.conf
 COPY config/nginx.conf /etc/nginx/nginx.conf
 COPY config/data /usr/local/etc/data/
 COPY config/php.ini /etc/php84/php.ini
+COPY config/icann_tlds /usr/local/etc/
 
 RUN chown -R nobody: /usr/local/etc/data
 RUN chmod 700 /usr/local/etc/data

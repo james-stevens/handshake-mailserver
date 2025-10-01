@@ -15,8 +15,17 @@ if ! test -s /opt/data/pems/server.pem
 		/usr/local/python/make_server_pem.py -f lord.webmail -c GB -l London -o dot-WebMail -u Mail -s London > /opt/data/pems/server.pem
 	fi
 
-
+chmod 644 /opt/data/pems/server.pem
 chown root:mail /opt/data/pems/server.pem
+
+if ! test -f /etc/sasl2/smtpd.conf
+	then
+		{
+		echo "pwcheck_method: auxprop"
+		echo "auxprop_plugin: sasldb"
+		echo "mech_list: PLAIN LOGIN CRAM-MD5 DIGEST-MD5 NTLM"
+		} > /etc/sasl2/smtpd.conf
+	fi
 
 for dir in spool master data mailboxes
 do
@@ -24,10 +33,11 @@ do
 	chown postfix:mail /opt/data/postfix/${dir}
 done
 
-for file in relay_domains transport_maps
+for file in transport_maps
 do
-	touch /opt/data/postfix/data/W${file}
-	postalias /opt/data/postfix/data/W${file}
+	touch /opt/data/postfix/data/${file}
+	rm -f /opt/data/postfix/data/${file}.lmdb
+	postalias /opt/data/postfix/data/${file}
 done
 
 postfix set-permissions
