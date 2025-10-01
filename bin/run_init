@@ -10,7 +10,7 @@ do
 done
 
 
-if ! test -f /opt/data/pems/server.pem
+if ! test -s /opt/data/pems/server.pem
 	then
 		/usr/local/python/make_server_pem.py -f lord.webmail -c GB -l London -o dot-WebMail -u Mail -s London > /opt/data/pems/server.pem
 	fi
@@ -33,6 +33,11 @@ postalias /opt/data/postfix/data/relay_domains
 postfix set-permissions
 
 
+mkdir /run/nginx; chown nginx: /run/nginx
 
+mkdir -p /opt/data/rainloop
+cp -a /usr/local/etc/data/* /opt/data/rainloop/
+chmod 700 /opt/data/rainloop
+chown nobody:nogroup /opt/data/rainloop
 
 exec /sbin/init
