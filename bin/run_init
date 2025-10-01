@@ -1,6 +1,6 @@
 #! /bin/sh
 
-mkdir -p /opt/data/pems /opt/data/etc
+mkdir -p /opt/data/pems /opt/data/etc /opt/data/rainloop
 for file in passwd shadow
 do
 	if ! test -f /opt/data/etc/${file}
@@ -24,20 +24,21 @@ do
 	chown postfix:mail /opt/data/postfix/${dir}
 done
 
-if ! test -f /opt/data/postfix/data/relay_domains
-	then
-		touch /opt/data/postfix/data/relay_domains
-	fi
+for file in relay_domains transport_maps
+do
+	touch /opt/data/postfix/data/W${file}
+	postalias /opt/data/postfix/data/W${file}
+done
 
-postalias /opt/data/postfix/data/relay_domains
 postfix set-permissions
-
 
 mkdir /run/nginx; chown nginx: /run/nginx
 
-mkdir -p /opt/data/rainloop
-cp -a /usr/local/etc/data/* /opt/data/rainloop/
-chmod 700 /opt/data/rainloop
-chown nobody:nogroup /opt/data/rainloop
+if ! test -f /opt/data/rainloop/EMPTY
+	then
+		cp -a /usr/local/etc/data/. /opt/data/rainloop/
+		chmod 700 /opt/data/rainloop
+		chown nobody:nogroup /opt/data/rainloop
+	fi
 
 exec /sbin/init
