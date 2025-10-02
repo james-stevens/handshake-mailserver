@@ -1,22 +1,44 @@
 #! /bin/sh
 
-mkdir -p /opt/data/pems /opt/data/etc /opt/data/rainloop
-for file in passwd shadow
+export BASE=/opt/data
+export SRC=/usr/local/etc
+
+mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
+
+for file in group passwd shadow policy.json
 do
-	if ! test -f /opt/data/etc/${file}
+	if ! test -f ${BASE}/etc/${file}
 		then
-			cp -a /usr/local/etc/${file} /opt/data/etc/${file}
+			cp -a ${SRC}/${file} ${BASE}/etc/${file}
 		fi
 done
 
+/usr/local/python/policy.py
+. /run/templates/__include__
 
-if ! test -s /opt/data/pems/server.pem
+if ! test -f ${BASE}/etc/welcome.eml
 	then
-		/usr/local/python/make_server_pem.py -f lord.webmail -c GB -l London -o dot-WebMail -u Mail -s London > /opt/data/pems/server.pem
+		cp -a /run/templates/welcome.eml ${BASE}/etc/welcome.eml
+		chmod 666 ${BASE}/etc/welcome.eml
 	fi
 
-chmod 644 /opt/data/pems/server.pem
-chown root:mail /opt/data/pems/server.pem
+mkdir -p /run/pems
+chmod 755 /run/pems
+chown root:mail /run/pems
+
+if ! test -s ${BASE}/pems/server.pem
+	then
+		/usr/local/python/make_server_pem.py \
+			-f ${POLICY_SITE_FQDN} \
+			-c ${POLICY_SITE_COUNTRY} \
+			-l ${POLICY_SITE_LOCATION} \
+			-o ${POLICY_SITE_ORG} \
+			-u ${POLICY_SITE_ORG_UNIT} \
+			-s ${POLICY_SITE_STATE} > ${BASE}/pems/server.pem
+	fi
+cp -a ${BASE}/pems/server.pem /run/pems/server.pem
+chmod 644 /run/pems/server.pem
+
 
 if ! test -f /etc/sasl2/smtpd.conf
 	then
@@ -29,26 +51,41 @@ if ! test -f /etc/sasl2/smtpd.conf
 
 for dir in spool master data mailboxes
 do
-	mkdir -p /opt/data/postfix/${dir}
-	chown postfix:mail /opt/data/postfix/${dir}
+	mkdir -p ${BASE}/postfix/${dir}
+	chown postfix:mail ${BASE}/postfix/${dir}
 done
+chown root:mail ${BASE}/postfix/spool
+chmod 755 ${BASE}/postfix/spool
+postfix set-permissions >/dev/null 2>&1
 
-for file in transport_maps
+
+for file in transport
 do
-	touch /opt/data/postfix/data/${file}
-	rm -f /opt/data/postfix/data/${file}.lmdb
-	postalias /opt/data/postfix/data/${file}
+	pfx="${BASE}/postfix/data/${file}"
+	echo "${POLICY_DEFAULT_MAIL_DOMAIN}   local: \$myhostname" > ${pfx}
+	rm -f ${pfx}.lmdb
+	postalias ${BASE}/postfix/data/${file}
+	chown postfix: ${pfx} ${pfx}.lmdb
 done
 
-postfix set-permissions
 
 mkdir /run/nginx; chown nginx: /run/nginx
 
-if ! test -f /opt/data/rainloop/EMPTY
+if ! test -f ${BASE}/rainloop/EMPTY
 	then
-		cp -a /usr/local/etc/data/. /opt/data/rainloop/
-		chmod 700 /opt/data/rainloop
-		chown nobody:nogroup /opt/data/rainloop
+		cp -a ${SRC}/data/. ${BASE}/rainloop/
 	fi
+
+RAINLOOP="${BASE}/rainloop/_data_/_default_"
+dst="${RAINLOOP}/configs/application.ini"
+src="/run/templates/application.ini"
+if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
+
+dst="${RAINLOOP}/domains/${POLICY_DEFAULT_MAIL_DOMAIN}.ini"
+src="/run/templates/webmail.localhost.ini"
+if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
+
+chmod 700 ${BASE}/rainloop
+chown -R nobody:nogroup ${BASE}/rainloop
 
 exec /sbin/init
