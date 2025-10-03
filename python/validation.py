@@ -4,6 +4,11 @@
 
 import re
 import socket
+import validators
+
+
+def is_valid_url(url):
+    return validators.url(url)
 
 
 def is_valid_host(host):

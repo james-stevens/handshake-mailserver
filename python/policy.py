@@ -6,14 +6,20 @@ import jinja2
 
 DEFAULT_POLICY_VALUES = {
     "default_mail_domain": "webmail.localhost",
-    "hosting_domain": "example.com",
+    "mx_mail_domain": "mx.example.com",
+    "website_domain": "example.com",
     "website_title": "Handshake Webmail",
     "site_fqdn": "handshake.webmail",
     "site_country": "GB",
     "site_location": "London",
     "site_org": "Handshake",
     "site_org_unit": "Ops",
-    "site_state": "London"
+    "site_state": "London",
+    "logging_default": "local0",
+    "strict_referrer": True,
+    "allow_icann_domains": False,
+    "allowable_referrer": None,
+    "session_expiry": 60 * 60 * 2
 }
 
 BASE = os.environ.get("BASE", "/opt/data")
@@ -29,6 +35,13 @@ def get_policy_values():
     else:
         new_values = {}
     return DEFAULT_POLICY_VALUES | new_values
+
+
+def policy(name):
+    all = get_policy_values()
+    if name in all:
+        return all[name]
+    return None
 
 
 def main():

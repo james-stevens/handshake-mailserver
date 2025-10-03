@@ -5,7 +5,7 @@ export SRC=/usr/local/etc
 
 mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
 
-for file in group passwd shadow policy.json
+for file in group passwd shadow
 do
 	if ! test -f ${BASE}/etc/${file}
 		then
@@ -13,13 +13,20 @@ do
 		fi
 done
 
+mkdir -p /run/exec/root /run/exec/norm /run/sessions
+chmod 777 /run/exec/root /run/exec/norm /run/sessions
+
+if ! test -d ${BASE}/service
+	then
+		cp -a /usr/local/etc/service ${BASE}/service
+	fi
+
 /usr/local/python/policy.py
 . /run/templates/__include__
 
-if ! test -f ${BASE}/etc/welcome.eml
+if ! grep -q '^manager:' /etc/passwd
 	then
-		cp -a /run/templates/welcome.eml ${BASE}/etc/welcome.eml
-		chmod 666 ${BASE}/etc/welcome.eml
+		/usr/local/bin/user_create "manager" "12345" >/dev/null 2>&1
 	fi
 
 mkdir -p /run/pems
