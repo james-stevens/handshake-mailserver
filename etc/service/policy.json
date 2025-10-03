@@ -1,0 +1,11 @@
+{
+	"default_mail_domain": "webmail.localhost",
+	"hosting_domain": "example.com",
+	"website_title": "Handshake Webmail",
+	"site_fqdn": "handshake.webmail",
+	"site_country": "GB",
+	"site_location": "London",
+	"site_org": "Handshake",
+	"site_org_unit": "Ops",
+	"site_state": "London"
+}

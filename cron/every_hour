@@ -1,0 +1,3 @@
+#! /bin/sh
+
+find /run/sessions/ -mtime +1 -delete
