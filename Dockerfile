@@ -27,6 +27,11 @@ RUN apk add ldns-tools openssl
 RUN apk add python3 py3-jinja2 py3-passlib py3-flask py3-filelock py3-validators
 RUN apk add php84-fpm php84-curl php84-iconv php84-dom
 
+RUN addgroup -S service
+RUN adduser -u 850 -S -G service service
+RUN addgroup -S rainloop
+RUN adduser -u 851 -S -G rainloop rainloop
+
 COPY etc /usr/local/etc/
 RUN mkdir -p /opt/data/etc
 RUN cp -a /etc/passwd /etc/shadow /etc/group /usr/local/etc
@@ -48,7 +53,7 @@ COPY config/nginx.conf /etc/nginx/nginx.conf
 COPY config/php.ini /etc/php84/php.ini
 COPY cron/every_hour /etc/periodic/hourly/
 
-RUN chown -R nobody: /usr/local/etc/data
+RUN chown -R rainloop: /usr/local/etc/data
 RUN chmod 700 /usr/local/etc/data
 
 COPY bin /usr/local/bin/

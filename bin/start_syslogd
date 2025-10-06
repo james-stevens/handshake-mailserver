@@ -6,6 +6,11 @@
 if test "${SYSLOG_SERVER}"
 	then
 		exec /sbin/syslogd -n -R ${SYSLOG_SERVER}
-	else
+	fi
+
+if test "${SYSLOG_STDOUT}" = "Y"
+	then
 		exec /sbin/syslogd -n -O -
 	fi
+
+exec /sbin/syslogd -n -O /opt/data/logs/messages -b 9 -s 100000

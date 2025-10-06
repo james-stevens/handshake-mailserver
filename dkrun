@@ -1,10 +1,13 @@
 #! /bin/sh
 
+#	--read-only \
 docker run \
-	--read-only \
+	--env SYSLOG_STDOUT=Y \
 	-m 1g \
 	--dns 192.168.8.110 \
 	-v /opt/data/handshake-mailserver:/opt/data \
+	-v /opt/github/handshake-mailserver/htdocs:/usr/local/htdocs \
+	-v /opt/github/handshake-mailserver/python:/usr/local/python \
 	-p 192.168.1.145:80:80 -p 192.168.1.145:443:443 \
 	-p 192.168.1.145:25:25 \
 	-p 192.168.1.145:143:143 -p 192.168.1.145:110:110 -p 192.168.1.145:993:993 -p 192.168.1.145:995:995 \

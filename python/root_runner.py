@@ -7,34 +7,46 @@ import subprocess
 import argparse
 
 import executor
+import filecfg
 import log
 
 
-def user_create(data):
-    if "name" not in data or "passwd" not in data:
-        log.log("ERROR: 'name' or 'passwd' missing from 'user_create' data")
+def user_create(user):
+    this_user = filecfg.record_info_load("users", user, True)
+    if "user" not in this_user or "password" not in this_user:
+        log.log("ERROR: 'name' or 'password' missing from 'user_password' data")
         return False
+
     try:
-        subprocess.run(["/usr/local/bin/user_create", data["name"], data["passwd"]],
+        subprocess.run(["adduser","-G","users","-h","/opt/data/homedirs/"+user,"-s","/sbin/nologin","-D",user],
                        stderr=subprocess.DEVNULL,
                        stdout=subprocess.DEVNULL,
                        check=True)
     except subprocess.CalledProcessError:
         return False
+
     return True
 
 
-def user_password(data):
-    if "name" not in data or "passwd" not in data:
-        log.log("ERROR: 'name' or 'passwd' missing from 'user_password' data")
+def user_password(user):
+    this_user = filecfg.record_info_load("users", user, True)
+    if "user" not in this_user or "password" not in this_user:
+        log.log("ERROR: 'name' or 'password' missing from 'user_password' data")
         return False
-    try:
-        subprocess.run(["/usr/local/bin/user_password", data["name"], data["passwd"]],
-                       stderr=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL,
-                       check=True)
-    except subprocess.CalledProcessError:
-        return False
+
+    with open("/etc/shadow", "r") as fd:
+        lines = [line.strip().split(":") for line in fd.readlines()]
+
+    by_name = {line[0]: line for line in lines}
+
+    if user in by_name:
+        by_name[user][1] = this_user["password"]
+    else:
+        lines.append([user, this_user["password"], '20364', '0', '99999', '7', '', '', ''])
+
+    with open("/etc/shadow", "w") as fd:
+        fd.write('\n'.join([":".join(line) for line in lines]) + "\n")
+
     return True
 
 
@@ -65,8 +77,16 @@ def main(with_debug):
                     time.sleep(5)
 
 
+def run_tests():
+    user_password("earl.webmail")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='ROOT Jobs Runner')
     parser.add_argument("-D", "--debug", default=False, help="Debug mode", action="store_true")
+    parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
     args = parser.parse_args()
-    main(args.debug)
+    if args.test:
+        run_tests()
+    else:
+        main(args.debug)

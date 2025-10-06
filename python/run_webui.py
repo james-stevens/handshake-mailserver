@@ -27,7 +27,7 @@ class WebuiReq:
     """ data unique to each request to keep different users data separate """
     def __init__(self):
         self.sess_code = None
-        self.user_id = None
+        self.user = None
         self.user_data = None
         self.post_js = flask.request.json if flask.request.method == "POST" and flask.request.is_json else None
         self.headers = {item.lower(): val for item, val in dict(flask.request.headers).items()}
@@ -38,7 +38,7 @@ class WebuiReq:
             self.parse_user_data(logged_in, check_sess_data)
 
         self.base_event = self.set_base_event()
-        self.is_logged_in = (self.user_id is not None and self.sess_code is not None)
+        self.is_logged_in = (self.user is not None and self.sess_code is not None)
 
     def parse_user_data(self, logged_in, check_sess_data):
         """ set up session properties """
@@ -47,12 +47,15 @@ class WebuiReq:
 
         self.user_data = check_sess_data
         self.sess_code = check_sess_data["session"]
-        self.user_id = check_sess_data['user_id']
-        log.debug(f"Logged in as {self.user_id}")
+        self.user = check_sess_data['user']
+        log.debug(f"Logged in as {self.user}")
 
     def abort(self, data):
         """ return error code to caller """
         return self.response({"error": data}, HTML_CODE_ERR)
+
+    def send_user_data(self):
+        return self.response(self.user_data)
 
     def response(self, data, code=HTML_CODE_OK):
         """ return OK response & data to caller """
@@ -80,13 +83,19 @@ def before_request():
     return flask.make_response(flask.jsonify({"error": "Website continuity error"}), HTML_CODE_ERR)
 
 
-@application.route('/pyrar/v1.0/hello', methods=['GET'])
+@application.route('/webmail/v1.0/hello', methods=['GET'])
 def hello():
     req = WebuiReq()
     return req.response({"hello": "world"})
 
 
-@application.route('/pyrar/v1.0/users/update', methods=['POST'])
+@application.route('/webmail/v1.0/users/info', methods=['GET'])
+def users_info():
+    req = WebuiReq()
+    return req.send_user_data()
+
+
+@application.route('/webmail/v1.0/users/update', methods=['POST'])
 def users_update():
     req = WebuiReq()
     if not req.is_logged_in:
@@ -95,7 +104,7 @@ def users_update():
     if req.post_js is None:
         return req.abort("No JSON posted")
 
-    ret, user_data = users.update_user(req.user_id, req.post_js)
+    ret, user_data = users.update_user(req.user, req.post_js)
     if not ret:
         return req.abort(user_data)
 
@@ -103,21 +112,21 @@ def users_update():
     return req.send_user_data()
 
 
-@application.route('/pyrar/v1.0/users/password', methods=['POST'])
+@application.route('/webmail/v1.0/users/password', methods=['POST'])
 def users_password():
     req = WebuiReq()
     if not req.is_logged_in:
         return req.abort(NOT_LOGGED_IN)
 
-    if not users.check_password(req.user_id, req.post_js):
+    if not users.check_password(req.user, req.post_js):
         return req.abort("Password match failed")
 
-    users.passwd_new(req.post_js["new_password"])
+    users.password_new(req.post_js["new_password"])
 
     return req.response("OK")
 
 
-@application.route('/pyrar/v1.0/users/login', methods=['POST'])
+@application.route('/webmail/v1.0/users/login', methods=['POST'])
 def users_login():
     req = WebuiReq()
     if req.post_js is None:
@@ -132,16 +141,16 @@ def users_login():
     return req.response(data)
 
 
-@application.route('/pyrar/v1.0/users/logout', methods=['GET'])
+@application.route('/webmail/v1.0/users/logout', methods=['GET'])
 def users_logout():
     req = WebuiReq()
     if not req.is_logged_in:
         return req.abort(NOT_LOGGED_IN)
 
-    users.logout(req.sess_code, req.user_id, req.user_agent)
+    users.logout(req.sess_code, req.user, req.user_agent)
 
     req.sess_code = None
-    req.user_id = None
+    req.user = None
 
     return req.response("logged-out")
 

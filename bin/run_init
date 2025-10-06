@@ -3,7 +3,7 @@
 export BASE=/opt/data
 export SRC=/usr/local/etc
 
-mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
+mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs ${BASE}/logs
 
 for file in group passwd shadow
 do
@@ -93,6 +93,6 @@ src="/run/templates/webmail.localhost.ini"
 if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
 
 chmod 700 ${BASE}/rainloop
-chown -R nobody:nogroup ${BASE}/rainloop
+chown -R rainloop: ${BASE}/rainloop
 
 exec /sbin/init
