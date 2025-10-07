@@ -27,10 +27,8 @@ RUN apk add ldns-tools openssl
 RUN apk add python3 py3-jinja2 py3-passlib py3-flask py3-filelock py3-validators
 RUN apk add php84-fpm php84-curl php84-iconv php84-dom
 
-RUN addgroup -S service
-RUN adduser -u 850 -S -G service service
-RUN addgroup -S rainloop
-RUN adduser -u 851 -S -G rainloop rainloop
+COPY setup /usr/local/setup/
+RUN /usr/local/setup/all
 
 COPY etc /usr/local/etc/
 RUN mkdir -p /opt/data/etc
@@ -62,4 +60,5 @@ COPY htdocs /usr/local/htdocs/
 COPY python /usr/local/python
 RUN python3 -m compileall /usr/local/python
 
+RUN rm -f /var/cache/apk/*
 CMD [ "/usr/local/bin/run_init" ]
