@@ -48,9 +48,9 @@ def compare_passwords(plaintext, stored):
 
 
 def create_session_file(user, user_data, user_agent):
-    print(">>>> create_session_file.user",user)
-    print(">>>> create_session_file.user_data",user_data)
-    print(">>>> create_session_file.user_agent",user_agent)
+    print(">>>> create_session_file.user", user)
+    print(">>>> create_session_file.user_data", user_data)
+    print(">>>> create_session_file.user_agent", user_agent)
 
     with tempfile.NamedTemporaryFile("w+",
                                      dir=SESSIONS_DIR,

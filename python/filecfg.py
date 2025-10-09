@@ -9,7 +9,7 @@ import json
 import misc
 from policy import this_policy as policy
 
-CFG_DIR = os.path.join(policy.BASE , "/service/")
+CFG_DIR = os.path.join(policy.BASE, "/service/")
 LCK_DIR = "/run/"
 
 
@@ -26,18 +26,18 @@ def user_file_name(user, with_make_dir=False):
     this_hash = calc_hash(user)
     if with_make_dir:
         d = policy.BASE
-        for dir in [ "service","users", this_hash[0], this_hash[1] ]:
-            d = os.path.join(d,dir)
+        for dir in ["service", "users", this_hash[0], this_hash[1]]:
+            d = os.path.join(d, dir)
             if not os.path.isdir(d):
-                os.mkdir(d,mode=0o755)
-    return os.path.join(policy.BASE,"service","users",this_hash[0],this_hash[1],user+".json")
+                os.mkdir(d, mode=0o755)
+    return os.path.join(policy.BASE, "service", "users", this_hash[0], this_hash[1], user + ".json")
 
 
 def get_file_name(file, record):
     if file == "users":
         return user_file_name(record)
     else:
-        return os.path.join(CFG_DIR,file + ".json")
+        return os.path.join(CFG_DIR, file + ".json")
 
 
 def return_record(file, js, record):
@@ -50,7 +50,7 @@ def return_record(file, js, record):
 
 def record_info_load(file, record):
     record_file = get_file_name(file, record)
-    lock_file = os.path.join(LCK_DIR , file + ".lock")
+    lock_file = os.path.join(LCK_DIR, file + ".lock")
     if not os.path.isfile(record_file):
         return None, "File not found"
 
@@ -65,7 +65,7 @@ def record_info_update(file, record, data):
     record_file = get_file_name(file, record)
     if not os.path.isfile(record_file):
         return None
-    lock_file = os.path.join(LCK_DIR , file + ".lock")
+    lock_file = os.path.join(LCK_DIR, file + ".lock")
 
     if data is None and os.path.isfile(record_file):
         os.remove(record_file)
