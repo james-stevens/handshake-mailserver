@@ -1,4 +1,6 @@
 #! /usr/bin/python3
+# (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
+# Alternative license arrangements possible, contact me for more information
 
 import os
 import time
@@ -18,10 +20,11 @@ def user_create(user):
         return False
 
     try:
-        subprocess.run(["adduser","-G","users","-h","/opt/data/homedirs/"+user,"-s","/sbin/nologin","-D",user],
-                       stderr=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL,
-                       check=True)
+        subprocess.run(
+            ["adduser", "-G", "users", "-h", "/opt/data/homedirs/" + user, "-s", "/sbin/nologin", "-D", user],
+            stderr=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            check=True)
     except subprocess.CalledProcessError:
         return False
 

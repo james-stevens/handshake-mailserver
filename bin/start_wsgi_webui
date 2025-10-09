@@ -1,0 +1,18 @@
+#! /bin/sh
+# (c) Copyright 2019-2022, James Stevens ... see LICENSE for details
+# Alternative license arrangements are possible, contact me for more information
+
+. /usr/local/bin/inc
+
+sessions=$(jq .webui_sessions < ${BASE}/service/policy.json)
+if test -z "${sessions}" -o "${sessions}" = "null"; then sessions="5"; fi
+
+log_lvl="info"
+log_fac="local7"
+logging="--log-syslog --log-syslog-facility ${log_fac} --log-level ${log_lvl}"
+
+cd ${PYBASE}
+
+exec gunicorn --workers ${sessions} \
+	--user=service ${logging} --bind unix:/run/wsgi_webui.sock \
+	wsgi 2>&1 | logger -p ${log_fac}.${log_lvl} -t webui

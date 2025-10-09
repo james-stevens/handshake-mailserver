@@ -13,4 +13,3 @@ deluser sshd
 deluser games
 deluser ntp
 deluser guest
-deluser klogd

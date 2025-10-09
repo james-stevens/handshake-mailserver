@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-# (c) Copyright 2019-2022, James Stevens ... see LICENSE for details
+# (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
 # Alternative license arrangements possible, contact me for more information
 """ module to resolve DNS queries into DoH JSON objects """
 
@@ -14,8 +14,7 @@ import dns
 import dns.name
 import dns.message
 import dns.rdatatype
-
-import validation
+import validators
 
 DNS_MAX_RESP = 4096
 MAX_TRIES = 10
@@ -41,9 +40,9 @@ def make_record(include_raw, rr, i):
 
 def resolv_host(server):
     """ resolve {host} to an IP if its a host name """
-    if validation.is_valid_ipv4(server):
+    if validators.ip_address.ipv4(server):
         return server
-    if validation.is_valid_host(server):
+    if validators.domain.domain(server):
         return socket.gethostbyname(server)
     return None
 
@@ -55,7 +54,7 @@ class ResolvError(Exception):
 class Query:  # pylint: disable=too-few-public-methods
     """ build a DNS query & resolve it """
     def __init__(self, name, rdtype, force_tcp=False):
-        if not validation.is_valid_host(name):
+        if not validators.domain.domain(name):
             raise ResolvError(f"Hostname '{name}' failed validation")
 
         self.name = name
@@ -82,7 +81,7 @@ class Resolver:
         self.force_tcp = False
         self.qryid = None
         self.reply = None
-        if not validation.is_valid_host(qry.name):
+        if not validators.domain.domain(qry.name):
             raise ResolvError(f"Hostname '{qry.name}' failed validation")
 
         rdtype = int(qry.rdtype) if isinstance(qry.rdtype, int) else dns.rdatatype.from_text(qry.rdtype)
@@ -93,7 +92,7 @@ class Resolver:
             self.servers = dohServers
 
         for each_svr in qry.servers:
-            if not validation.is_valid_ipv4(each_svr):
+            if not validators.ip_address.ipv4(each_svr):
                 raise ResolvError("Invalid IP v4 Address for a Server")
 
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -230,7 +229,7 @@ def main():
     parser.add_argument("-t", "--rdtype", default="txt", help="RR Type to query for")
     args = parser.parse_args()
 
-    if not validation.is_valid_host(args.name):
+    if not validators.domain.domain(args.name):
         print(f"ERROR: '{args.name}' is an invalid host name")
     else:
         qry = Query(args.name, args.rdtype, args.force_tcp)

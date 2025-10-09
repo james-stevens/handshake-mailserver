@@ -7,6 +7,7 @@ svr_dst="run/pems/server.pem"
 if test -f ${svr_pem} -a ${svr_pem} -nt ${svr_dst}
 	then
 		cp -a ${svr_pem} ${svr_dst}
-		killall -HUP stunnel nginx
+		killall -HUP nginx
+		killall stunnel
 		postfix reload
 	fi

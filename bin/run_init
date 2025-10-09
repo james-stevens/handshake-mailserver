@@ -1,9 +1,8 @@
 #! /bin/sh
 
-export BASE=/opt/data
-export SRC=/usr/local/etc
+. /usr/local/bin/inc
 
-mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs ${BASE}/logs
+mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
 
 for file in group passwd shadow
 do
@@ -13,15 +12,15 @@ do
 		fi
 done
 
-mkdir -p /run/exec/root /run/exec/norm /run/sessions
-chmod 777 /run/exec/root /run/exec/norm /run/sessions
+mkdir -p /run/exec/root /run/exec/doms /run/sessions
+chmod 777 /run/exec/root /run/exec/doms /run/sessions
 
 if ! test -d ${BASE}/service
 	then
 		cp -a /usr/local/etc/service ${BASE}/service
 	fi
 
-/usr/local/python/policy.py
+${PYBASE}/policy.py
 . /run/templates/__include__
 
 if ! grep -q '^manager:' /etc/passwd
@@ -35,7 +34,7 @@ chown root:mail /run/pems
 
 if ! test -s ${BASE}/pems/server.pem
 	then
-		/usr/local/python/make_server_pem.py \
+		${PYBASE}/make_server_pem.py \
 			-f ${POLICY_SITE_FQDN} \
 			-c ${POLICY_SITE_COUNTRY} \
 			-l ${POLICY_SITE_LOCATION} \

@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-# (c) Copyright 2019-2022, James Stevens ... see LICENSE for details
+# (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
 # Alternative license arrangements possible, contact me for more information
 """ functions for sys-logging """
 
@@ -8,7 +8,7 @@ import syslog
 import inspect
 import datetime
 
-import policy
+from policy import this_policy as policy
 
 DONE_INIT = False
 

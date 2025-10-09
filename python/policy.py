@@ -1,8 +1,13 @@
 #! /usr/bin/python3
+# (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
+# Alternative license arrangements possible, contact me for more information
 
 import os
 import json
 import jinja2
+import argparse
+
+import fileloader
 
 DEFAULT_POLICY_VALUES = {
     "default_mail_domain": "webmail.localhost",
@@ -27,28 +32,40 @@ SRC_DIR = "/usr/local/etc/templates"
 DST_DIR = "/run/templates"
 
 
-def get_policy_values():
-    file = BASE + "/etc/policy.json"
-    if os.path.isfile(file):
-        with open(file, "r", encoding='UTF-8') as fd:
-            new_values = json.load(fd)
-    else:
-        new_values = {}
-    return DEFAULT_POLICY_VALUES | new_values
+class Policy:
+    """ policy values manager """
+    def __init__(self):
+        self.BASE = BASE
+        file = BASE + "/service/policy.json"
+        self.file = fileloader.FileLoader(file)
+        self.all_data = None
+        self.merge_policy_data()
+
+    def merge_policy_data(self):
+        self.all_data = DEFAULT_POLICY_VALUES.copy()
+        self.all_data.update(self.file.data())
+
+    def check_file(self):
+        if self.file.check_for_new():
+            self.merge_policy_data()
+
+    def policy(self, name, default_value=None):
+        self.check_file()
+        return self.all_data.get(name, default_value)
+
+    def data(self):
+        self.check_file()
+        return self.all_data
 
 
-def policy(name):
-    all = get_policy_values()
-    if name in all:
-        return all[name]
-    return None
+this_policy = Policy()
 
 
 def main():
     if not os.path.isdir(DST_DIR):
         os.mkdir(DST_DIR, mode=0o755)
 
-    merge_data = {"policy": get_policy_values()}
+    merge_data = {"policy": this_policy.data()}
     for item in DEFAULT_POLICY_VALUES:
         if merge_data["policy"][item] is None or merge_data["policy"][item] == "":
             merge_data["policy"][item] = DEFAULT_POLICY_VALUES[item]
@@ -66,5 +83,17 @@ def main():
             fd.write(f"export POLICY_{item.upper()}='{merge_data['policy'][item]}'\n")
 
 
+def run_tests():
+    print(json.dumps(DEFAULT_POLICY_VALUES, indent=4))
+    print("====================================")
+    print(this_policy.policy("strict_referrer"))
+
+
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='ROOT Jobs Runner')
+    parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
+    args = parser.parse_args()
+    if args.test:
+        run_tests()
+    else:
+        main()

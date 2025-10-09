@@ -14,7 +14,7 @@ var debugAPI = false;
 const is_hex = /^[0-9a-fA-F]+$/;
 const pre_get_elm = [
 	"topMsg","myMsgPop","errorSpan","emailIcon","ordersIcon", "userInfo","default",
-	"userSpace","output","topSpan","search","businessName","messagesIcon"
+	"userSpace","output","topSpan","businessName","messagesIcon"
 	];
 
 elm = {};
@@ -132,7 +132,7 @@ function togglePopUp(name,tmout)
 
 	let e = null;
 	if (name=="loginPopup") e = document.formLogin.email;
-	if (name=="registerPopup") e = document.formRegister.email;
+	if (name=="registerPopup") e = document.formRegister.user;
 	if (name=="AddNSPopup") e = document.getElementById("inputNS");
 	if (name=="AddDSPopup") e = document.getElementById("ds_keyTag");
 	if (name=="AddRRwin") e = document.getElementById("rr_name");
@@ -164,7 +164,6 @@ function do_theme_change(value)
 	if (value in theme_colours) changeTheme(value);
 	let popup = document.getElementById("themePopup");
 	popup.classList.remove("show")
-	if (elm.search.style.display != "none") elm.searchEdit.focus();
 }
 
 
@@ -200,10 +199,18 @@ function loggedIn()
 	e.style.display = "none";
 	e = document.getElementById("isLoggedIn");
 	e.style.display = "block";
-	if (elm.userSpace.style.display == "block") goSearch(true);
+	if (elm.userSpace.style.display == "block") go_welcome_page(true);
 	user_info();
 }
 
+
+function go_welcome_page(with_push)
+{
+	if (with_push) push_hist("goSearch");
+	hideAllPopUp();
+	show_one_space("default");
+	size_one_space();
+}
 
 
 function user_info()
@@ -333,7 +340,7 @@ function loggedOut()
 	elm.emailIcon.style.display="none";
 	elm.ordersIcon.style.display="none";
 
-	goSearch(true);
+	go_welcome_page(true);
 }
 
 
@@ -356,7 +363,7 @@ function history_back(event)
 		"myDomains": myDomains,
 		"myAboutMe": select_about_me,
 		"request_transfer": request_transfer,
-		"goSearch": goSearch,
+		"go_welcome_page": go_welcome_page,
 		"viewMessages": viewMessages,
 		"welcome": go_welcome
 		};
@@ -401,7 +408,17 @@ function go_welcome(with_push)
 	srchDiv.onclick = function (e) { if (e.target !== this) return; hidePopUp(); }
 
 	callApi("hello",(ok,reply) => {
-		console.log(ok,reply);
+
+        if (ctx.session) {
+            callApi("users/details",(ok,reply) => {
+                if (ok) {
+                    catch_user_data(reply);
+                    loggedIn();
+                    }
+                check_router_path();
+                });
+            } else { loggedOut(); check_router_path(); }
+
 		});
 }
 
@@ -431,7 +448,7 @@ function router_reset_password(params)
 	x += '<tr><td class=formPrompt>&nbsp;Confirm:&nbsp;</td><td><input autocomplete="new-password" onkeyUp="keyEsc(event);" style="width: 250px;" type=password id="reset_confirm">&nbsp;</td></tr>';
 	x += "<tr><td colspan=2>"+gbl.gap+"</td></tr>";
 	x += '<tr><td class=btmBtnBar colspan=2>';
-	x += '<span style="width: 75px;" tabindex=0 title="Cancel" class=myBtn onClick="goSearch();">Cancel</span>';
+	x += '<span style="width: 75px;" tabindex=0 title="Cancel" class=myBtn onClick="go_welcome_page();">Cancel</span>';
 	x += '<input style="width: 110px;" tabindex=0 type=submit title="Reset your password" class=myBtn value="Reset">';
 	x += '</td>';
 	x += '</tr></form></table>';
@@ -453,7 +470,7 @@ function do_reset_password()
 		"confirm": document.resetPass.reset_confirm.value
 		};
 
-	if (send_json.code.length != 30) { goSearch(); return false; }
+	if (send_json.code.length != 30) { go_welcome_page(); return false; }
 	if (send_json.pin.length != 4) {
 		errMsg("Invalid PIN Number");
 		document.resetPass.reset_pin.focus();
@@ -475,6 +492,7 @@ function do_reset_password()
 
 	return false;
 }
+
 
 
 function check_router_path()
@@ -550,7 +568,7 @@ function postCloseAccount()
 	if (f.close_password.value=="") return regErr("Password missing",f.close_password);
 
 	callApi("users/close",(ret,reply) => {
-		if (ret) goSearch(true);
+		if (ret) go_welcome_page(true);
 		else def_errMsg("failed",reply,"editCloseAccount");
 		}, { json: { "password": f.close_password.value }});
 
@@ -590,8 +608,8 @@ function user_general_settings()
 	x += settings_header("Change User Details",true);
 	x += "<form name=editUserDetails method=post action=# onSubmit='postUserDetails(); return false;'>";
 	x += "<table id=editUserDetails width=100%><colgroup><col width=30%/><col/><col width=10%/></colgroup>";
-	x += form_prompt("E-Mail")+`<input style="width: 300px;" id='user_email' value='${ctx.user.email}'></td></tr>`;
-	x += form_prompt("Name")+`<input style="width: 300px;" id='user_name' value='${ctx.user.name}'></td></tr>`;
+	x += form_prompt("E-Mail Domain")+`<input style="width: 300px;" id='user_domain' value='${ctx.user.email}'></td></tr>`;
+	x += form_prompt("Recovery E-Mail")+`<input style="width: 300px;" id='user_email' value='${ctx.user.name}'></td></tr>`;
     x += form_prompt("Default Auto Renew")+`<select id='default_auto_renew'>`;
 
     let yes_chk="",no_chk="";
@@ -665,9 +683,8 @@ function userDetails()
 	x += "</td></tr>";
 
 	x += "<tr><td>"+gbl.gap+"</td></tr><tr><td><table width=100%>";
-	x += `<tr><td class=promptCell>E-Mail :</td><td class=dataCell>${ctx.user.email}</td></tr>`;
-	x += `<tr><td class=promptCell>E-Mail Verified :</td><td class=dataCell>${verified}</td></tr>`;
-	x += `<tr><td class=promptCell>Name :</td><td class=dataCell>${ctx.user.name}</td></tr>`;
+	x += `<tr><td class=promptCell>E-Mail Domain :</td><td class=dataCell>${ctx.user.user}</td></tr>`;
+	x += `<tr><td class=promptCell>Recovery E-Mail :</td><td class=dataCell>${ctx.user.email}</td></tr>`;
 	x += `<tr><td class=promptCell>Last Login :</td><td class=dataCell>${local_dt(ctx.user.last_login_dt)}</td></tr>`;
 	x += `<tr><td class=promptCell>Last Amended :</td><td class=dataCell>${local_dt(ctx.user.amended_dt)}</td></tr>`;
 	x += `<tr><td class=promptCell>Created :</td><td class=dataCell>${local_dt(ctx.user.created_dt)}</td></tr>`;
@@ -699,7 +716,7 @@ function myAccount(with_push)
 
 	callApi("users/details",(ok,reply) => {
 		if (!ok) {
-			goSearch(true);
+			go_welcome_page(true);
 			return def_errMsg("Error in setting your data",reply,"searchEdit");
 			}
 		catch_user_data(reply);
@@ -810,8 +827,8 @@ function make_theme_popup()
 <span class="popuptext" id="registerPopup">
 <form onSubmit='doRegister(); return false;' method=submit action='#' name=formRegister><table>
 <tr onClick="toggleRegister();"><Td colspan=2><div style="height: 15px;"></div></td></tr>
-	<tr><td class=formPrompt>&nbsp;E-Mail:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="email">&nbsp;</td></tr>
-	<tr><td class=formPrompt>&nbsp;Name:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="name">&nbsp;</td></tr>
+	<tr><td class=formPrompt>&nbsp;E-Mail Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
+	<tr><td class=formPrompt>&nbsp;Recovery E-Mail:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="email">&nbsp;</td></tr>
 	<tr><td class=formPrompt>&nbsp;Password:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="password">&nbsp;</td></tr>
 	<tr><td class=formPrompt>&nbsp;Confirm:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="confirm">&nbsp;</td></tr>
 <tr><td colspan=2><div style='height: 7px;'></div></td></tr>
@@ -830,7 +847,7 @@ function make_theme_popup()
 	<table>
 		<form onSubmit='return doLogin();' action="#" method=post name=formLogin>
 		<tr onClick="toggleLogin()"><Td colspan=2><div style="height: 15px;"></div></td></tr>
-			<tr><td class=formPrompt>&nbsp;E-Mail:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="email">&nbsp;</td></tr>
+			<tr><td class=formPrompt>&nbsp;E-Mail Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
 			<tr><td class=formPrompt>&nbsp;Password:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="password">&nbsp;</td></tr>
 		<tr><td colspan=2><div style='height: 7px;'></div></td></tr>
 		<tr><td align=center colspan=2><a href=# onClick="return resend_password(true);">Forgotton</a> your password</td></tr>
@@ -862,8 +879,6 @@ function make_theme_popup()
 <div class="popBelow">
 <span style='width: 85px;' id=themeButton tabindex=0 title="Change theme" class=myBtn onClick="toggleTheme();">Theme</span>
 <span class="popBelowText" id="themePopup">&nbsp;</span>
-<span style='width: 85px;' tabindex=0 title="Domain name search" class=myBtn onClick="goSearch(true);">Search</span>
-<span id=marketPlaceBtn style='width: 85px;' tabindex=0 title="Go to the domain market place" class=myBtn onClick="goMarketPlace();">Marketplace</span>
 </div>
 </td>
 
@@ -886,32 +901,8 @@ function make_theme_popup()
 <div style="height: 100px;">&nbsp;</div>
 
 <div id="allBottom">
-	<div style='height: 30px;'></div>
-	<div id="default">
-		<div style='height: 30px;'></div>
-			<span>
-			<table align=center border=0>
-				<form action="#" name=searchForm onSubmit="return doSearch();">
-					<tr><td align=center>
-						<div class="popup">
-							<table cellspacing=0 cellpadding=0 border=0><tr>
-							<td><span class=emoji onClick='togglePopUp("emojiPopup",0);'>&#x1F600;</span></td>
-							<td><input placeholder="Enter a domain to search for, or hit ':' for emoji search" style="width:600px;" autofocus class=searchBox id=searchEdit></td>
-							<td><span class=emoji>&#x1F50d;</span></td>
-							</tr></table>
-							<span class="popupText" style="margin-left: -298; margin-top: 0px;" id="emojiPopup">
-								<input onkeyUp="emojiKey(event);" id="emojiSearch" style="width: 100%"><P>
-								<div style="text-align: left; overflow-y: auto; overflow-x: hidden; width: 580px; max-height: 500px; margin-top: 10px; white-space: normal;" id="emojiOutput">&nbsp;</div>
-							</span>
-							</div>
-					</td></tr>
-				</form>
-				<tr><td><div id="output"></div></td></tr>
-			</table>
-		</div>
+	<span class="botSpace" id="default" style="display: none;">Hello</span>
 	<span class="botSpace" id="userSpace" style="display: none;"></span>
-	<span class="botSpace" id="basketSpace" style="display: none;"></span>
-	<span class="botSpace" id="marketPlace" style="display: none;"></span>
 </div>
 
 <div><table><tr><td><div onClick="unerrMsg();" id=myMsgPop class='msgPop msgPopNo'></div></td></tr></table></div>

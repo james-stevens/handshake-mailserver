@@ -1,0 +1,5 @@
+#! /bin/sh
+
+export BASE=/opt/data
+export SRC=/usr/local/etc
+export PYBASE=/usr/local/python

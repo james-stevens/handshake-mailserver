@@ -1,5 +1,5 @@
 #! /usr/bin/python3
-# (c) Copyright 2019-2022, James Stevens ... see LICENSE for details
+# (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
 # Alternative license arrangements possible, contact me for more information
 """ module to run the rest/api for user's site web/ui """
 
@@ -7,7 +7,7 @@ import flask
 
 import log
 import users
-import policy
+from policy import this_policy as policy
 
 WANT_REFERRER_CHECK = True
 
@@ -21,6 +21,11 @@ SESSION_TAG_LOWER = SESSION_TAG.lower()
 
 log.init("logging_webui")
 application = flask.Flask("EPP Registrar")
+
+REMOVE_TO_SECURE = {
+    "users": ["password", "two_fa", "password_reset"],
+    "user": ["password", "two_fa", "password_reset"]
+}
 
 
 class WebuiReq:
@@ -37,7 +42,6 @@ class WebuiReq:
             logged_in, check_sess_data = users.check_session(self.headers[SESSION_TAG_LOWER], self.user_agent)
             self.parse_user_data(logged_in, check_sess_data)
 
-        self.base_event = self.set_base_event()
         self.is_logged_in = (self.user is not None and self.sess_code is not None)
 
     def parse_user_data(self, logged_in, check_sess_data):
@@ -49,6 +53,18 @@ class WebuiReq:
         self.sess_code = check_sess_data["session"]
         self.user = check_sess_data['user']
         log.debug(f"Logged in as {self.user}")
+
+    def secure_user_data(self):
+        """ remove data columns the user shouldnt see """
+        if self.user_data is None:
+            return
+        for table, remove_cols in REMOVE_TO_SECURE.items():
+            if table in self.user_data:
+                if isinstance(self.user_data[table], dict):
+                    self.clean_this_record(self.user_data[table], remove_cols)
+                if isinstance(self.user_data[table], list):
+                    for this_record in self.user_data[table]:
+                        self.clean_this_record(this_record, remove_cols)
 
     def abort(self, data):
         """ return error code to caller """
@@ -77,25 +93,34 @@ def before_request():
     if allowable_referrer is not None and isinstance(allowable_referrer, (dict, list)):
         if flask.request.referrer in allowable_referrer:
             return None
-    elif flask.request.referrer == "https://" + policy.policy("website_name") + "/":
+    elif flask.request.referrer == "https://" + policy.policy("website_domain") + "/":
         return None
 
     return flask.make_response(flask.jsonify({"error": "Website continuity error"}), HTML_CODE_ERR)
 
 
-@application.route('/webmail/v1.0/hello', methods=['GET'])
+@application.route('/wmapi/hello', methods=['GET'])
 def hello():
     req = WebuiReq()
     return req.response({"hello": "world"})
 
 
-@application.route('/webmail/v1.0/users/info', methods=['GET'])
+@application.route('/wmapi/users/info', methods=['GET'])
 def users_info():
     req = WebuiReq()
     return req.send_user_data()
 
 
-@application.route('/webmail/v1.0/users/update', methods=['POST'])
+@application.route('/wmapi/users/register', methods=['POST'])
+def users_register():
+    req = WebuiReq()
+    if req.is_logged_in:
+        return req.abort("Please log out first")
+    ok, user_data = users.register(req.post_js, req.user_agent)
+    return req.send_user_data()
+
+
+@application.route('/wmapi/users/update', methods=['POST'])
 def users_update():
     req = WebuiReq()
     if not req.is_logged_in:
@@ -112,7 +137,7 @@ def users_update():
     return req.send_user_data()
 
 
-@application.route('/webmail/v1.0/users/password', methods=['POST'])
+@application.route('/wmapi/users/password', methods=['POST'])
 def users_password():
     req = WebuiReq()
     if not req.is_logged_in:
@@ -126,7 +151,7 @@ def users_password():
     return req.response("OK")
 
 
-@application.route('/webmail/v1.0/users/login', methods=['POST'])
+@application.route('/wmapi/users/login', methods=['POST'])
 def users_login():
     req = WebuiReq()
     if req.post_js is None:
@@ -141,7 +166,7 @@ def users_login():
     return req.response(data)
 
 
-@application.route('/webmail/v1.0/users/logout', methods=['GET'])
+@application.route('/wmapi/users/logout', methods=['GET'])
 def users_logout():
     req = WebuiReq()
     if not req.is_logged_in:

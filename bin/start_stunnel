@@ -1,0 +1,4 @@
+#! /bin/sh
+
+killall -9 stunnel
+exec /usr/bin/stunnel >/dev/null 2>&1

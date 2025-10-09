@@ -52,7 +52,7 @@ function callApi(sfx,callback,inData)
 
 	if (debugAPI) { console.log("API>>>",sfx); console.log("API>>>",inData); }
 
-	let url = `${window.location.origin}/webmail/v1.0/${sfx}`;
+	let url = `${window.location.origin}/wmapi/${sfx}`;
 	if (gbl.url_prefix)
 		url = `${window.location.origin}${gbl.url_prefix}${sfx}`;
 	if (sfx.slice(0,1)=="/")
