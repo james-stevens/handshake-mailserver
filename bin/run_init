@@ -19,6 +19,8 @@ if ! test -d ${BASE}/service
 	then
 		cp -a /usr/local/etc/service ${BASE}/service
 	fi
+chown -R service: ${BASE}/service
+
 
 ${PYBASE}/policy.py
 . /run/templates/__include__
