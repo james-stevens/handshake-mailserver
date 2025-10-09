@@ -1,0 +1,6 @@
+#! /bin/sh
+
+for file in setup_users
+do
+	/usr/local/setup/${file}
+done

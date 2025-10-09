@@ -1,0 +1,16 @@
+#! /bin/sh
+
+addgroup -g 850 -S service
+adduser -u 850 -S -G service service
+addgroup -g 851 -S rainloop
+adduser -u 851 -S -G rainloop rainloop
+deluser lp
+deluser news
+deluser uucp
+deluser cron
+deluser ftp
+deluser sshd
+deluser games
+deluser ntp
+deluser guest
+deluser klogd
