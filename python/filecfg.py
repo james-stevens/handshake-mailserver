@@ -85,7 +85,7 @@ def record_info_update(file, record, data):
 
         js["amended_dt"] = misc.now()
         with open(record_file, "w") as fd:
-            json.dump(js, fd)
+            json.dump(js, fd, indent=2)
 
         js[file.rstrip("s")] = record
         return True, js

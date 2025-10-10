@@ -102,8 +102,8 @@ def init(inp_facility=None, with_debug=False, with_logging=True):
     if inp_facility in facility_options:
         this_facility = facility_options[inp_facility]
     else:
-        if (this_facility := policy.policy(inp_facility)) is None:
-            this_facility = policy.policy("logging_default")
+        if (this_facility := policy.get(inp_facility)) is None:
+            this_facility = policy.get("logging_default")
 
     if check_off(this_facility, True):
         return

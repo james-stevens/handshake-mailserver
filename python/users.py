@@ -22,10 +22,7 @@ USER_FILE = policy.BASE + "/service/users.json"
 USER_LOCK = "/run/users.lock"
 SESSIONS_DIR = "/run/sessions"
 
-SESSION_EXPIRE_TIME = policy.policy("session_expiry")
-
-with open("/usr/local/etc/icann_tlds", "r") as fd:
-    icann_tlds = {line.strip(): True for line in fd.readlines()}
+SESSION_EXPIRE_TIME = policy.get("session_expiry")
 
 
 def make_session_code(user):
@@ -104,6 +101,8 @@ def check_session(session_code, user_agent):
         return False, "User in session file doesn't exist"
 
     os.utime(file, (now, now))
+    user_data["session"] = session_code
+
     return True, user_data
 
 
@@ -133,40 +132,38 @@ def logout(session_code, user, user_agent):
     return True, None
 
 
+REGISTER_WEB = {
+    "user": [True, validation.web_valid_new_account],
+    "email": [True, validators.email],
+    "password": [True, None],
+    "confirm": [True, None]
+}
+
+
 def register(sent_data, user_agent):
-    for item in ["user", "email", "password", "confirm"]:
-        if item not in sent_data:
-            return False, "Insufficient data"
+    ok, reply = validation.web_validate(sent_data, REGISTER_WEB)
+    if not ok:
+        return False, reply
 
     if sent_data["password"] != sent_data["confirm"]:
         return False, "Passwords do not match"
 
-    if not validators.email(sent_data["email"]):
-        return False, "Invalid email address"
-
-    if not validation.is_valid_fqdn(sent_data["user"]):
-        return False, "Invalid user name"
-
-    user = sent_data["user"].lower()
-    file = filecfg.user_file_name(user, True)
-    if os.path.isfile(file):
-        return False, "User is already registered"
-
-    tld = user.split(".")[-1]
-    if tld in icann_tlds and not policy.policy("allow_icann_domains"):
-        return False, "ICANN domains not allowed"
-
+    user = sent_data["user"]
+    now = misc.now()
     user_data = {
         "mx": base64.b32encode(secrets.token_bytes(30)).decode("utf-8").lower(),
         "password": encrypt(sent_data["password"]),
-        "created_dt": misc.now(),
+        "created_dt": now,
+        "amended_dt": now,
+        "last_login_dt": now,
         "domains": {
             user: False
         }
     }
 
+    file = filecfg.user_file_name(user, True)
     with open(file, "w+") as fd:
-        json.dump(user_data, fd)
+        json.dump(user_data, fd, indent=2)
 
     return create_session_file(user, user_data, user_agent)
 
@@ -175,7 +172,7 @@ if __name__ == "__main__":
     print(
         "REGISTER >>>",
         register({
-            "user": "earl.webmail",
+            "user": "anon.webmail",
             "email": "earl@gmail.com",
             "password": "yes",
             "confirm": "yes"

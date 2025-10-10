@@ -11,7 +11,7 @@ from policy import this_policy as policy
 
 WANT_REFERRER_CHECK = True
 
-HTML_CODE_ERR = 499
+HTML_CODE_ERR = 299
 HTML_CODE_OK = 200
 
 NOT_LOGGED_IN = "Not logged in or login timed-out"
@@ -49,10 +49,15 @@ class WebuiReq:
         if not logged_in or "session" not in check_sess_data:
             return
 
-        self.user_data = check_sess_data
+        self.user_data = {"user":check_sess_data}
         self.sess_code = check_sess_data["session"]
         self.user = check_sess_data['user']
         log.debug(f"Logged in as {self.user}")
+
+    def clean_this_record(self, this_record, remove_cols):
+        for column in remove_cols:
+            if column in this_record:
+                del this_record[column]
 
     def secure_user_data(self):
         """ remove data columns the user shouldnt see """
@@ -85,15 +90,15 @@ class WebuiReq:
 
 @application.before_request
 def before_request():
-    strict_referrer = policy.policy("strict_referrer")
+    strict_referrer = policy.get("strict_referrer")
     if strict_referrer is not None and not strict_referrer:
         return None
 
-    allowable_referrer = policy.policy("allowable_referrer")
+    allowable_referrer = policy.get("allowable_referrer")
     if allowable_referrer is not None and isinstance(allowable_referrer, (dict, list)):
         if flask.request.referrer in allowable_referrer:
             return None
-    elif flask.request.referrer == "https://" + policy.policy("website_domain") + "/":
+    elif flask.request.referrer == "https://" + policy.get("website_domain") + "/":
         return None
 
     return flask.make_response(flask.jsonify({"error": "Website continuity error"}), HTML_CODE_ERR)
@@ -105,7 +110,7 @@ def hello():
     return req.response({"hello": "world"})
 
 
-@application.route('/wmapi/users/info', methods=['GET'])
+@application.route('/wmapi/users/details', methods=['GET'])
 def users_info():
     req = WebuiReq()
     return req.send_user_data()
@@ -116,7 +121,10 @@ def users_register():
     req = WebuiReq()
     if req.is_logged_in:
         return req.abort("Please log out first")
-    ok, user_data = users.register(req.post_js, req.user_agent)
+    ok, data = users.register(req.post_js, req.user_agent)
+    if not ok:
+        return req.abort(data)
+    req.parse_user_data(ok, data)
     return req.send_user_data()
 
 
@@ -162,8 +170,7 @@ def users_login():
         return req.abort("Login failed")
 
     req.parse_user_data(ret, data)
-
-    return req.response(data)
+    return req.send_user_data()
 
 
 @application.route('/wmapi/users/logout', methods=['GET'])

@@ -47,6 +47,7 @@ gbl = {
 	};
 
 ctx = {};
+if (window.localStorage.session) ctx.session = window.localStorage.session;
 
 if ((gbl.theme == null)||(!(gbl.theme in theme_colours))) {
 	gbl.theme="default";
@@ -88,8 +89,6 @@ function keyEsc(e) {
     if (e.key == "Escape") {
     	hideAllPopUp();
     	unerrMsg();
-		if (elm.search.style.display != "none")
-			elm.searchEdit.focus();
     	}
 }
 
@@ -215,14 +214,8 @@ function go_welcome_page(with_push)
 
 function user_info()
 {
-	basket_changed();
-
-	elm.messagesIcon.style.display = (ctx.messages)?"":"none";
-	elm.emailIcon.style.display = ((ctx.user)&&(!ctx.user.email_verified))?"":"none";
-	elm.ordersIcon.style.display = (ctx.orders&&ctx.orders.length)?"":"none";
-
-	if ((ctx.user)&&(ctx.user.name)) {
-		elm.userInfo.innerHTML = `Logged in as: <b>${ctx.user.name}</b>`;
+	if ((ctx.user)&&(ctx.user.user)) {
+		elm.userInfo.innerHTML = `Logged in as: <b>${ctx.user.user}</b>`;
 		}
 }
 
@@ -252,29 +245,25 @@ function doRegister()
 
 	if (f.password.value != f.confirm.value) return regErr("Passwords do not match");
 	if (!valid_email.test(f.email.value)) return regErr("Invalid email address");
+	if (!fqdnCheck.test(f.name.value)) return regErr("Invalid domain name");
 
 	let data = {
-		"name":f.name.value,
+		"user":f.user.value,
 		"email":f.email.value,
-		"password":f.password.value
+		"password":f.password.value,
+		"confirm":f.confirm.value
 		};
 
 	callApi("users/register",(ret,reply) => {
-		if (!ret) {
-			let msg="Error in registration";
-			if ("error" in reply) msg = reply["error"];
-			return regErr(msg,f.email);
-			}
+		if (!ret) return def_errMsg("Error in registration",reply,f);
 		hidePopUp();
 		catch_user_data(reply);
 		loggedIn();
 
-		if (elm.search.style.display != "none") elm.searchEdit.focus();
-
 		f.email.value = "";
 		f.password.value = "";
 		f.confirm.value = "";
-		f.name.value = "";
+		f.user.value = "";
 
 		}, { json: data });
 }
@@ -291,9 +280,9 @@ function doLogin()
 	}
 
 	let f = document.formLogin;
-	if (!valid_email.test(f.email.value)) return regErr("Invalid email address",f.email);
+	if (!fqdnCheck.test(f.user.value)) return regErr("Invalid login name",f.user);
 
-	let data = { "email":f.email.value, "password":f.password.value };
+	let data = { "user":f.user.value, "password":f.password.value };
 
 	callApi("users/login",(ret,reply) => {
 		if (!ret) {
@@ -305,10 +294,7 @@ function doLogin()
 		catch_user_data(reply);
 		loggedIn();
 
-		if (elm.search.style.display != "none") elm.searchEdit.focus();
-		if (elm.basketSpace.style.display != "none") basketCheckout(false);
-
-		f.email.value = "";
+		f.user.value = "";
 		f.password.value = "";
 
 		}, { json: data });
@@ -323,7 +309,6 @@ function doLogOut()
 	ctx = {};
 	callApi("users/logout",(ret,reply) => {});
 	show_one_space("default");
-	elm.searchEdit.focus();
 	loggedOut();
 }
 
@@ -518,10 +503,9 @@ function check_router_path()
 
 function catch_user_data(reply)
 {
-	["messages","failed_basket","transactions","user","domains","orders"].forEach((item) => {
+	["user"].forEach((item) => {
 		if (item in reply) ctx[item] = reply[item];
 		})
-	if (("orders" in ctx)&&(ctx.orders.length <= 0)) delete ctx.orders;
 }
 
 
@@ -662,46 +646,9 @@ function user_general_settings()
 
 function userDetails()
 {
-	let auto_renew = gbl.cross;
-	let verified = gbl.cross;
-	let has_twofa = gbl.cross;
-	if (ctx.user.default_auto_renew) auto_renew = gbl.tick;
-	if (ctx.user.email_verified) verified = gbl.tick;
-	if (ctx.user.two_fa) has_twofa = gbl.tick;
-
-	let x = "<table align=center width=75% border=0>";
-	x += "<tr><td id=userBtnBar class=btmBtnBar>";
-
-	if (!ctx.user.email_verified) 
-		x += btn("send_confirm_email()","Resend Verify","Resend e-mail verification",100);
-
-	x += btn("user_statement(true,true)","Statement","View a statement of all your transactions",100)
-	x += btn("viewMessages(true)","Messages","View all my messages",100)
-	x += top_up_button();
-	x += btn("payment_methods(true)","Payment","View / maintain your payment methods",100)
-	x += btn("user_settings(true)","Settings","Change this accounts settings",100)
-	x += "</td></tr>";
-
-	x += "<tr><td>"+gbl.gap+"</td></tr><tr><td><table width=100%>";
-	x += `<tr><td class=promptCell>E-Mail Domain :</td><td class=dataCell>${ctx.user.user}</td></tr>`;
-	x += `<tr><td class=promptCell>Recovery E-Mail :</td><td class=dataCell>${ctx.user.email}</td></tr>`;
-	x += `<tr><td class=promptCell>Last Login :</td><td class=dataCell>${local_dt(ctx.user.last_login_dt)}</td></tr>`;
-	x += `<tr><td class=promptCell>Last Amended :</td><td class=dataCell>${local_dt(ctx.user.amended_dt)}</td></tr>`;
-	x += `<tr><td class=promptCell>Created :</td><td class=dataCell>${local_dt(ctx.user.created_dt)}</td></tr>`;
-	x += `<tr><td class=promptCell>Defaut Auto-Renew :</td><td class=dataCell>${auto_renew}</td></tr>`;
-
-	let show_bal = format_amount(ctx.user.acct_current_balance);
-	if (ctx.user.acct_on_hold) show_bal = "Account on hold";
-	x += `<tr><td class=promptCell>Account Balance :</td><td class=dataCell>${show_bal}</td></tr>`;
-
-	if ((!ctx.user.acct_on_hold)&&((ctx.user.acct_overdraw_limit)))
-		x += `<tr><td class=promptCell>Credit Limit :</td><td class=dataCell>${format_amount(ctx.user.acct_overdraw_limit)}</td></tr>`;
-
-	x += "</td></tr></table>";
-
-	if ((ctx.orders)&&(ctx.orders.length)) x += order_details(false);
-
-	return x + "</table>"
+	let x = "<table>"
+	for(let i in ctx.user) x += `<tr><td>${i}</td><td>${ctx.user[i]}</td></tr>`;
+	return x+"</table>";
 }
 
 
@@ -835,7 +782,7 @@ function make_theme_popup()
 <tr>
 	<td class=btmBtnBar colspan=2>
 		<span style='width: 75px;' tabindex=0 title="Cancel" class=myBtn onClick="toggleRegister();">Cancel</span>
-		<input style='width: 110px;' tabindex=0 type=submit title="Register" class=myBtn value="Register">
+		<input style='width: 110px;' tabindex=1 type=submit title="Register" class=myBtn value="Register">
 	</td>
 </tr></form></table>
 </span></div>
@@ -845,7 +792,7 @@ function make_theme_popup()
 <span style='width: 75px;' tabindex=0 title="Get me logged in" class=myBtn onClick="toggleLogin(); return false;">Login</span>
 <span class="popuptext" id="loginPopup">
 	<table>
-		<form onSubmit='return doLogin();' action="#" method=post name=formLogin>
+		<form onSubmit='doLogin(); return false;' action="#" method=post name=formLogin>
 		<tr onClick="toggleLogin()"><Td colspan=2><div style="height: 15px;"></div></td></tr>
 			<tr><td class=formPrompt>&nbsp;E-Mail Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
 			<tr><td class=formPrompt>&nbsp;Password:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="password">&nbsp;</td></tr>
@@ -865,9 +812,8 @@ function make_theme_popup()
 </span>
 
 <span style="display:none;" id="isLoggedIn">
-	<span style='width: 75px;' tabindex=0 title="Publish Info About Me" id="myAboutMeBtn" class=myBtn onClick="return myAboutMe(true);">About Me</span>
-	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="return myDomains(true);">Domains</span>
-	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="load_domains_list(myAccount); return false;">Account</span>
+	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myDomains(true); return false;">Domains</span>
+	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myAccount(true); return false;">Account</span>
 	<span style='width: 75px;' tabindex=0 title="Log me out" class=myBtn onClick="doLogOut(); return false;">Logout</span>
 </span>
 </td></tr>

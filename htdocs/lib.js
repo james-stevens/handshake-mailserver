@@ -85,15 +85,20 @@ function callApi(sfx,callback,inData)
 			ctx.session = s;
 			}
 		}
-	if (debugAPI) { console.log("OUT-HEAD",httpCmd.headers); console.log("OUT-METHOD",httpCmd.method); }
+	if (debugAPI) { 
+		console.log("OUT-HEAD",httpCmd.headers);
+		console.log("OUT-METHOD",httpCmd.method);
+		}
 
 	fetch(url,httpCmd).then(response => {
 		if (response.status != okResp) {
 			response.text().then(
 				data => {
-					if (debugAPI) console.log("API>>> Resp/BAD",data);
-					if (debugAPI) console.log("API>>> BAD",response.status,response.statusText);
-					if (response.status != 499) return we_are_done(false,{"error":"Unexecpted System Error"});
+					if (debugAPI) {
+						console.log("API>>> Resp/BAD",data);
+						console.log("API>>> BAD",response.status,response.statusText);
+						}
+					if (response.status != 299) return we_are_done(false,{"error":"Unexecpted System Error"});
 					check_session(response.headers);
 					try {
 						return we_are_done(false,JSON.parse(data));

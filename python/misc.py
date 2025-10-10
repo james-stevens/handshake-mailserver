@@ -5,7 +5,7 @@
 import datetime
 import idna
 
-import policy
+from policy import this_policy as policy
 
 
 def now(offset=0):
@@ -16,7 +16,7 @@ def now(offset=0):
 
 def puny_to_utf8(name, strict_idna_2008=None):
     if strict_idna_2008 is None:
-        strict_idna_2008 = policy.policy("strict_idna2008")
+        strict_idna_2008 = policy.get("strict_idna2008")
     try:
         idn = idna.decode(name)
         return idn

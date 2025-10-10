@@ -49,7 +49,7 @@ class Policy:
         if self.file.check_for_new():
             self.merge_policy_data()
 
-    def policy(self, name, default_value=None):
+    def get(self, name, default_value=None):
         self.check_file()
         return self.all_data.get(name, default_value)
 
@@ -84,9 +84,9 @@ def main():
 
 
 def run_tests():
-    print(json.dumps(DEFAULT_POLICY_VALUES, indent=4))
+    print(json.dumps(DEFAULT_POLICY_VALUES, indent=2))
     print("====================================")
-    print(this_policy.policy("strict_referrer"))
+    print(this_policy.get("strict_referrer"))
 
 
 if __name__ == "__main__":
