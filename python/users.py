@@ -17,9 +17,9 @@ import executor
 import validation
 import filecfg
 import misc
+import log
 
 USER_FILE = policy.BASE + "/service/users.json"
-USER_LOCK = "/run/users.lock"
 SESSIONS_DIR = "/run/sessions"
 
 SESSION_EXPIRE_TIME = policy.get("session_expiry")
@@ -68,6 +68,7 @@ def login(sent_data, user_agent):
         return False, "Insufficient data"
 
     ok, user_data = user_info_load(sent_data["user"])
+    log.log(f"login:: {user_data}")
     if not ok or user_data is None or "password" not in user_data:
         return False, f"User '{sent_data['user']}' not found or missing password"
 
@@ -156,12 +157,21 @@ def register(sent_data, user_agent):
         "created_dt": now,
         "amended_dt": now,
         "last_login_dt": now,
+        "events": [
+            {
+            "when_dt": now,
+            "desc": "Account first registered"
+            }
+        ],
+        "email": {
+            f"{user}@{policy.get("default_mail_domain")}": False
+            },
         "domains": {
             user: False
         }
     }
 
-    file = filecfg.user_file_name(user, True)
+    file, __ = filecfg.user_file_name(user, True)
     with open(file, "w+") as fd:
         json.dump(user_data, fd, indent=2)
 
@@ -169,6 +179,10 @@ def register(sent_data, user_agent):
 
 
 if __name__ == "__main__":
+    print("INFO LOAD ->", user_info_load("lord.webmail"))
+
+
+def not_now():
     print(
         "REGISTER >>>",
         register({
@@ -177,9 +191,6 @@ if __name__ == "__main__":
             "password": "yes",
             "confirm": "yes"
         }, "my-agent"))
-
-
-def not_now():
     print("--->>>", USER_FILE)
     # print(user_info_load("james"))
     # print(user_info_update("james", {"user": "james", "password": "fred"}))

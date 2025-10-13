@@ -14,5 +14,5 @@ logging="--log-syslog --log-syslog-facility ${log_fac} --log-level ${log_lvl}"
 cd ${PYBASE}
 
 exec gunicorn --workers ${sessions} \
-	--user=service ${logging} --bind unix:/run/wsgi_webui.sock \
+	--user=service --group=service ${logging} --bind unix:/run/wsgi_webui.sock \
 	wsgi 2>&1 | logger -p ${log_fac}.${log_lvl} -t webui

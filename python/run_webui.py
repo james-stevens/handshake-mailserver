@@ -33,7 +33,7 @@ class WebuiReq:
     def __init__(self):
         self.sess_code = None
         self.user = None
-        self.user_data = None
+        self.user_data = {}
         self.post_js = flask.request.json if flask.request.method == "POST" and flask.request.is_json else None
         self.headers = {item.lower(): val for item, val in dict(flask.request.headers).items()}
         self.user_agent = self.headers.get("user-agent", "Unknown")
@@ -49,7 +49,7 @@ class WebuiReq:
         if not logged_in or "session" not in check_sess_data:
             return
 
-        self.user_data = {"user":check_sess_data}
+        self.user_data = {"user": check_sess_data}
         self.sess_code = check_sess_data["session"]
         self.user = check_sess_data['user']
         log.debug(f"Logged in as {self.user}")
@@ -110,6 +110,13 @@ def hello():
     return req.response({"hello": "world"})
 
 
+@application.route('/wmapi/config', methods=['GET'])
+def config():
+    req = WebuiReq()
+    req.user_data["policy"] = policy.data()
+    return req.send_user_data()
+
+
 @application.route('/wmapi/users/details', methods=['GET'])
 def users_info():
     req = WebuiReq()
@@ -167,6 +174,7 @@ def users_login():
 
     ret, data = users.login(req.post_js, req.user_agent)
     if not ret or not data:
+        log.log(f"Login failed: {data}")
         return req.abort("Login failed")
 
     req.parse_user_data(ret, data)

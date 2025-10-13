@@ -10,7 +10,7 @@ import sys
 import misc
 import resolv
 import filecfg
-import log
+# import log
 from policy import this_policy as policy
 
 IS_HOST = r'^(\*\.|)([\_a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
@@ -109,7 +109,7 @@ def pre_check_user(user, is_new):
     if tld in icann_tlds and not policy.get("allow_icann_domains"):
         return False, "ICANN domains are not allowed"
 
-    file = filecfg.user_file_name(user, True)
+    file, __ = filecfg.user_file_name(user, True)
     has_file = os.path.isfile(file)
 
     if is_new and has_file:

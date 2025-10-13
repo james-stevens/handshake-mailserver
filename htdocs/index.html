@@ -288,7 +288,7 @@ function doLogin()
 		if (!ret) {
 			let msg="Error logging in";
 			if ("error" in reply) msg = reply["error"];
-			return regErr(msg,f.email);
+			return regErr(msg,f.user);
 			}
 		hidePopUp();
 		catch_user_data(reply);
@@ -392,8 +392,9 @@ function go_welcome(with_push)
 	let srchDiv = document.getElementById("default");
 	srchDiv.onclick = function (e) { if (e.target !== this) return; hidePopUp(); }
 
-	callApi("hello",(ok,reply) => {
+	callApi("config",(ok,reply) => {
 
+		catch_user_data(reply);
         if (ctx.session) {
             callApi("users/details",(ok,reply) => {
                 if (ok) {
@@ -503,7 +504,7 @@ function check_router_path()
 
 function catch_user_data(reply)
 {
-	["user"].forEach((item) => {
+	["user","policy"].forEach((item) => {
 		if (item in reply) ctx[item] = reply[item];
 		})
 }
