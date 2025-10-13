@@ -5,52 +5,16 @@
 import os
 import time
 import json
-import subprocess
 import argparse
 
 import executor
-import filecfg
 import log
 
 
-def user_create(user):
-    this_user = filecfg.record_info_load("users", user, True)
-    if "user" not in this_user or "password" not in this_user:
-        log.log("ERROR: 'name' or 'password' missing from 'user_password' data")
-        return False
-
-    try:
-        subprocess.run(
-            ["adduser", "-G", "users", "-h", "/opt/data/homedirs/" + user, "-s", "/sbin/nologin", "-D", user],
-            stderr=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            check=True)
-    except subprocess.CalledProcessError:
-        return False
-
-    return True
-
-
-def user_password(user):
-    this_user = filecfg.record_info_load("users", user, True)
-    if "user" not in this_user or "password" not in this_user:
-        log.log("ERROR: 'name' or 'password' missing from 'user_password' data")
-        return False
-
-    with open("/etc/shadow", "r") as fd:
-        lines = [line.strip().split(":") for line in fd.readlines()]
-
-    by_name = {line[0]: line for line in lines}
-
-    if user in by_name:
-        by_name[user][1] = this_user["password"]
-    else:
-        lines.append([user, this_user["password"], '20364', '0', '99999', '7', '', '', ''])
-
-    with open("/etc/shadow", "w") as fd:
-        fd.write('\n'.join([":".join(line) for line in lines]) + "\n")
-
-    return True
+def install_passwd_files(data):
+    for file in ["passwd", "shadow", "group"]:
+        if os.path.isfile(f"/run/{file}.new"):
+            os.rename(f"/run/{file}.new", f"/run/{file}")
 
 
 def test_test(data):
@@ -58,10 +22,10 @@ def test_test(data):
     return True
 
 
-ROOT_CMDS = {"user_password": user_password, "user_create": user_create, "test": test_test}
+ROOT_CMDS = {"install_passwd_files": install_passwd_files, "test": test_test}
 
 
-def main(with_debug):
+def runner(with_debug):
     log.init("ROOT backend", with_debug=with_debug)
     log.log("ROOT backend running")
     while True:
@@ -81,15 +45,26 @@ def main(with_debug):
 
 
 def run_tests():
-    user_password("earl.webmail")
+    install_passwd_files(None)
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description='ROOT Jobs Runner')
     parser.add_argument("-D", "--debug", default=False, help="Debug mode", action="store_true")
     parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
+    parser.add_argument("-O", "--one", help="Run one module")
     args = parser.parse_args()
-    if args.test:
+    if args.one:
+        if args.one not in ROOT_CMDS:
+            log.log("ERROR: ROOT CMD '{args.one}' not valid")
+            return
+        ROOT_CMDS[args.one](None)
+
+    elif args.test:
         run_tests()
     else:
-        main(args.debug)
+        runner(args.debug)
+
+
+if __name__ == "__main__":
+    main()

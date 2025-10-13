@@ -2,15 +2,15 @@
 
 . /usr/local/bin/inc
 
-mkdir -p ${BASE}/pems ${BASE}/etc ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
+mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
 
 for file in group passwd shadow
 do
-	if ! test -f ${BASE}/etc/${file}
-		then
-			cp -a ${SRC}/${file} ${BASE}/etc/${file}
-		fi
+	cp -a ${SRC}/uid/${file} /run/${file}
 done
+
+/usr/local/python/doms_runner.py -O new_unix_files
+/usr/local/python/root_runner.py -O install_passwd_files
 
 mkdir -p /run/exec/root /run/exec/doms /run/sessions
 chmod 777 /run/exec/root /run/exec/doms /run/sessions

@@ -31,7 +31,7 @@ def user_file_name(user, with_make_dir=False):
             if not os.path.isdir(d):
                 os.mkdir(d, mode=0o755)
     path = os.path.join(policy.BASE, "service", "users", this_hash[0], this_hash[1])
-    return os.path.join(path, user + ".json"), os.path.join(path, "lock")
+    return os.path.join(path, user + ".json"), os.path.join(path, ".lock")
 
 
 def get_file_name(file, record):

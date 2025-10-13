@@ -33,12 +33,9 @@ COPY setup /usr/local/setup/
 RUN /usr/local/setup/all
 
 COPY etc /usr/local/etc/
-RUN mkdir -p /opt/data/etc
-RUN cp -a /etc/passwd /etc/shadow /etc/group /usr/local/etc
-RUN cp -a /etc/passwd /etc/shadow /etc/group /opt/data/etc
-RUN ln -fns /opt/data/etc/passwd /etc/passwd
-RUN ln -fns /opt/data/etc/shadow /etc/shadow
-RUN ln -fns /opt/data/etc/group /etc/group
+RUN mkdir -p /usr/local/etc/uid
+RUN cp -a /etc/passwd /etc/shadow /etc/group /usr/local/etc/uid
+RUN cp -a /etc/passwd /etc/shadow /etc/group /run
 
 RUN ln -s /opt/data/sasl2 /etc/sasl2
 
@@ -62,5 +59,8 @@ COPY htdocs /usr/local/htdocs/
 COPY python /usr/local/python
 RUN python3 -m compileall /usr/local/python
 
+RUN ln -fns /run/passwd /etc/passwd
+RUN ln -fns /run/shadow /etc/shadow
+RUN ln -fns /run/group /etc/group
 RUN rm -f /var/cache/apk/*
 CMD [ "/usr/local/bin/run_init" ]
