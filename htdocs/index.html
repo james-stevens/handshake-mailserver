@@ -21,8 +21,8 @@ elm = {};
 gbl = {
 	"theme": window.localStorage.theme,
 
-	tick: "&#x2611;",
-	cross: "&#x2612;",
+	tick: "&#x2705;",
+	cross: "&#x274e;",
 	timer: "&#x23f3;",
 	cut: "&#x2702;",
 	waste: "&#x1F5D1;",
@@ -234,7 +234,7 @@ function send_confirm_email()
 
 function doRegister()
 {
-	function regErr(err)
+	function regErr(err,item)
 	{
 		errMsg(err,"registerPopup");
 		clr_lazy_hide();
@@ -243,9 +243,11 @@ function doRegister()
 
 	let f = document.formRegister;
 
-	if (f.password.value != f.confirm.value) return regErr("Passwords do not match");
-	if (!valid_email.test(f.email.value)) return regErr("Invalid email address");
-	if (!fqdnCheck.test(f.name.value)) return regErr("Invalid domain name");
+	console.log("doRegister",valid_email.test(f.email.value),fqdnCheck.test(f.name.value));
+
+	if (f.password.value != f.confirm.value) return regErr("Passwords do not match",f.password);
+	if (!valid_email.test(f.email.value)) return regErr("Invalid email address",f.email);
+	if (!fqdnCheck.test(f.user.value)) return regErr("Invalid domain name",f.user);
 
 	let data = {
 		"user":f.user.value,
@@ -255,7 +257,7 @@ function doRegister()
 		};
 
 	callApi("users/register",(ret,reply) => {
-		if (!ret) return def_errMsg("Error in registration",reply,f);
+		if (!ret) return def_errMsg("Error in registration",reply,"registerPopup");
 		hidePopUp();
 		catch_user_data(reply);
 		loggedIn();
@@ -395,6 +397,8 @@ function go_welcome(with_push)
 	callApi("config",(ok,reply) => {
 
 		catch_user_data(reply);
+		if (ctx.policy) gbl.config = {"policy":ctx.policy};
+		elm.businessName.innerHTML = `<a href="https://${policy("website_domain","#")}">${policy("website_title","WebMail")}</a>`;
         if (ctx.session) {
             callApi("users/details",(ok,reply) => {
                 if (ok) {
@@ -593,7 +597,7 @@ function user_general_settings()
 	x += settings_header("Change User Details",true);
 	x += "<form name=editUserDetails method=post action=# onSubmit='postUserDetails(); return false;'>";
 	x += "<table id=editUserDetails width=100%><colgroup><col width=30%/><col/><col width=10%/></colgroup>";
-	x += form_prompt("E-Mail Domain")+`<input style="width: 300px;" id='user_domain' value='${ctx.user.email}'></td></tr>`;
+	x += form_prompt("Your Domain")+`<input style="width: 300px;" id='user_domain' value='${ctx.user.email}'></td></tr>`;
 	x += form_prompt("Recovery E-Mail")+`<input style="width: 300px;" id='user_email' value='${ctx.user.name}'></td></tr>`;
     x += form_prompt("Default Auto Renew")+`<select id='default_auto_renew'>`;
 
@@ -645,16 +649,56 @@ function user_general_settings()
 
 
 
-function userDetails()
+function event_details()
 {
-	let x = "<table>"
-	for(let i in ctx.user) x += `<tr><td>${i}</td><td>${ctx.user[i]}</td></tr>`;
+	let x = "<table align=center width=75%>"
+	for(let i of ctx.user.events) 
+		x += `<tr><td align=right>${i.when_dt}&nbsp;:&nbsp;</td><td>${i.desc}</td></tr>`;
 	return x+"</table>";
 }
 
 
 
-function myAccount(with_push)
+function userDetails()
+{
+	const acct_desc = {	
+		"created_dt": "Created",
+		"amended_dt": "Last Updated",
+		"user": "Account Name",
+		"mx": "Your MX Host Name",
+		"email": "Recovery Email",
+		"last_login_dt": "Last Login",
+		};
+	let x = "<table align=center width=75%>"
+	for(let i in ctx.user) 
+		if (i in acct_desc)
+			x += `<tr><td align=right>${acct_desc[i]}&nbsp;:&nbsp;</td><td>${ctx.user[i]}</td></tr>`;
+	return x+"</table>";
+}
+
+
+
+function domainDetails()
+{
+	let x = "<table align=center width=75%>"
+	x += settings_header("Domains",true);
+	x += "<table width=100%>"
+	x += "<colgroup><col/><col width=200px/></colgroup>"
+	for(let i in ctx.user.domains) x += `<tr><td>${i}</td><td>${(ctx.user.domains[i])?gbl.tick:gbl.cross}</td></tr>`;
+	x += "</table></td></tr>";
+	x += settings_header("Email Addresses",false);
+	x += "<table width=100%>"
+	x += "<colgroup><col/><col width=200px/></colgroup>"
+	for(let i in ctx.user.identities) x += `<tr><td>${i}</td><td>${(ctx.user.identities[i])?gbl.tick:gbl.cross}</td></tr>`;
+	x += "</table></td></tr>";
+	return x+"</table>";
+}
+
+
+
+
+
+function myStuff(with_push, value_fn)
 {
 	if (with_push) push_hist("myAccount");
 
@@ -669,11 +713,10 @@ function myAccount(with_push)
 			}
 		catch_user_data(reply);
 		user_info();
-		elm.userSpace.innerHTML = userDetails();
+		elm.userSpace.innerHTML = value_fn();
 		size_one_space();
 		});
 }
-
 
 
 
@@ -764,7 +807,7 @@ function make_theme_popup()
 <table border=0 width=100% cellspacing=0 cellpadding=5 style="margin-top: 15px;">
 <colgroup><col width=40%/><col width=200px/><col/></colgroup>
 <tr>
-<td align=left><span id="businessName" class="businessName">Registrar</span></td>
+<td align=left><span id="businessName" class="businessName">WebMail</span></td>
 <td rowspan=2 align=center><div style="width: 200px margin:20px; font-size: 20px;" id="topMsg">&nbsp;</div></td>
 <td align=right>
 
@@ -773,9 +816,9 @@ function make_theme_popup()
 <div class="popup">
 <span style='width: 75px;' tabindex=0 title="Register me" class=myBtn onClick="toggleRegister(); return false;">Register</span>
 <span class="popuptext" id="registerPopup">
-<form onSubmit='doRegister(); return false;' method=submit action='#' name=formRegister><table>
+<form onSubmit='doRegister(); return false;' method=post action='#' name=formRegister><table>
 <tr onClick="toggleRegister();"><Td colspan=2><div style="height: 15px;"></div></td></tr>
-	<tr><td class=formPrompt>&nbsp;E-Mail Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
+	<tr><td class=formPrompt>&nbsp;Your Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
 	<tr><td class=formPrompt>&nbsp;Recovery E-Mail:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="email">&nbsp;</td></tr>
 	<tr><td class=formPrompt>&nbsp;Password:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="password">&nbsp;</td></tr>
 	<tr><td class=formPrompt>&nbsp;Confirm:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="confirm">&nbsp;</td></tr>
@@ -795,7 +838,7 @@ function make_theme_popup()
 	<table>
 		<form onSubmit='doLogin(); return false;' action="#" method=post name=formLogin>
 		<tr onClick="toggleLogin()"><Td colspan=2><div style="height: 15px;"></div></td></tr>
-			<tr><td class=formPrompt>&nbsp;E-Mail Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
+			<tr><td class=formPrompt>&nbsp;Your Domain:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" name="user">&nbsp;</td></tr>
 			<tr><td class=formPrompt>&nbsp;Password:&nbsp;</td><td><input onkeyUp="keyEsc(event);" style="width: 250px;" type=password name="password">&nbsp;</td></tr>
 		<tr><td colspan=2><div style='height: 7px;'></div></td></tr>
 		<tr><td align=center colspan=2><a href=# onClick="return resend_password(true);">Forgotton</a> your password</td></tr>
@@ -813,8 +856,9 @@ function make_theme_popup()
 </span>
 
 <span style="display:none;" id="isLoggedIn">
-	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myDomains(true); return false;">Domains</span>
-	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myAccount(true); return false;">Account</span>
+	<span style='width: 75px;' tabindex=0 title="List account events" id="myEventsBtn" class=myBtn onClick="myStuff(true,event_details); return false;">Event Log</span>
+	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myStuff(true,domainDetails); return false;">Domains</span>
+	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myStuff(true,userDetails); return false;">Account</span>
 	<span style='width: 75px;' tabindex=0 title="Log me out" class=myBtn onClick="doLogOut(); return false;">Logout</span>
 </span>
 </td></tr>

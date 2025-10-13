@@ -17,7 +17,7 @@ import executor
 import validation
 import filecfg
 import misc
-import log
+# import log
 
 USER_FILE = policy.BASE + "/service/users.json"
 SESSIONS_DIR = "/run/sessions"
@@ -45,10 +45,6 @@ def compare_passwords(plaintext, stored):
 
 
 def create_session_file(user, user_data, user_agent):
-    print(">>>> create_session_file.user", user)
-    print(">>>> create_session_file.user_data", user_data)
-    print(">>>> create_session_file.user_agent", user_agent)
-
     with tempfile.NamedTemporaryFile("w+",
                                      dir=SESSIONS_DIR,
                                      encoding="utf-8",
@@ -68,7 +64,6 @@ def login(sent_data, user_agent):
         return False, "Insufficient data"
 
     ok, user_data = user_info_load(sent_data["user"])
-    log.log(f"login:: {user_data}")
     if not ok or user_data is None or "password" not in user_data:
         return False, f"User '{sent_data['user']}' not found or missing password"
 
@@ -157,15 +152,14 @@ def register(sent_data, user_agent):
         "created_dt": now,
         "amended_dt": now,
         "last_login_dt": now,
-        "events": [
-            {
+        "email": sent_data["email"],
+        "events": [{
             "when_dt": now,
             "desc": "Account first registered"
-            }
-        ],
-        "email": {
-            f"{user}@{policy.get("default_mail_domain")}": False
-            },
+        }],
+        "identities": {
+            f"{user}@{policy.get('default_mail_domain')}": False
+        },
         "domains": {
             user: False
         }
@@ -182,7 +176,7 @@ if __name__ == "__main__":
     print("INFO LOAD ->", user_info_load("lord.webmail"))
 
 
-def not_now():
+def debug_stuff():
     print(
         "REGISTER >>>",
         register({

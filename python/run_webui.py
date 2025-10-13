@@ -174,7 +174,6 @@ def users_login():
 
     ret, data = users.login(req.post_js, req.user_agent)
     if not ret or not data:
-        log.log(f"Login failed: {data}")
         return req.abort("Login failed")
 
     req.parse_user_data(ret, data)

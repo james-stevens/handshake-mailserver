@@ -50,12 +50,31 @@ class ResolvError(Exception):
 
 class Resolver:
     """ resolve a DNS <Query> """
-    def __init__(self):
-        with open("/etc/resolv.conf", "r") as fd:
-            etc_resolv = [
-                line.strip().split() for line in fd.readlines() if line[0] != '#' and line[:11] == "nameserver "
-            ]
-        self.default_servers = [resline[1] for resline in etc_resolv if resline[0] == "nameserver"]
+    def __init__(self, servers=None):
+        self.servers = None
+        if servers is None:
+            with open("/etc/resolv.conf", "r") as fd:
+                etc_resolv = [
+                    line.strip().split() for line in fd.readlines() if line[0] != '#' and line[:11] == "nameserver "
+                ]
+            self.servers = [resline[1] for resline in etc_resolv if resline[0] == "nameserver"]
+        else:
+            if servers is not None:
+                if isinstance(servers, list):
+                    self.servers = servers
+                elif isinstance(servers, str):
+                    self.servers = servers.split(",")
+
+        if self.servers is None or not isinstance(self.servers, list):
+            raise ResolvError("Failed to identify servers")
+
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        if self.sock is None:
+            raise ResolvError("Failed to open UDP client socket")
+
+        for each_svr in self.servers:
+            if not validators.ip_address.ipv4(each_svr):
+                raise ResolvError("Invalid IP v4 Address for a Server")
 
     def resolv(self,
                name,
@@ -68,9 +87,10 @@ class Resolver:
         if not validation.is_valid_handshake(name):
             raise ResolvError(f"Hostname '{name}' failed validation")
 
-        self.servers = self.default_servers
-        if servers is not None and isinstance(servers, list):
-            self.servers = servers
+        if servers is not None:
+            self.this_servers = servers
+        else:
+            self.this_servers = self.servers
 
         self.qryid = None
         self.reply = None
@@ -85,14 +105,6 @@ class Resolver:
 
         rdtype = int(rdtype) if isinstance(rdtype, int) else dns.rdatatype.from_text(rdtype)
 
-        for each_svr in self.servers:
-            if not validators.ip_address.ipv4(each_svr):
-                raise ResolvError("Invalid IP v4 Address for a Server")
-
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        if self.sock is None:
-            raise ResolvError("Failed to open UDP client socket")
-
         self.expiry = 1
         self.tries = 0
         msg = dns.message.make_query(name, rdtype, payload=30000, want_dnssec=with_dnssec, flags=self.flags)
@@ -102,7 +114,7 @@ class Resolver:
     def send_all(self):
         """ send the query to all servers """
         ret = False
-        for each_svr in self.servers:
+        for each_svr in self.this_servers:
             try:
                 sent_len = self.sock.sendto(self.question, (each_svr, 53))
                 ret = ret or (sent_len == len(self.question))
