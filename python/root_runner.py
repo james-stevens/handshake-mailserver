@@ -11,10 +11,31 @@ import executor
 import log
 
 
+def get_grp_id(grp):
+    with open("/usr/local/etc/uid/group", "r") as fd:
+        for line in fd.readlines():
+            if line[:7] == f"{grp}:":
+                return int(line.strip().split(":")[2])
+    return None
+
+
+PASSWD_FILE_PERMS = {
+    "passwd": [0, 0, 0o644],
+    "group": [0, 0, 0o644],
+    "shadow": [0, get_grp_id("shadow"), 0o640],
+}
+
+
 def install_passwd_files(data):
     for file in ["passwd", "shadow", "group"]:
-        if os.path.isfile(f"/run/{file}.new"):
-            os.rename(f"/run/{file}.new", f"/run/{file}")
+        src = f"/run/{file}.new"
+        if os.path.isfile(src):
+            uid, gid, perm = PASSWD_FILE_PERMS[file]
+            os.chmod(src, perm)
+            os.chown(src, uid, gid)
+            os.rename(src, f"/run/{file}")
+    executor.create_command("install_passwd_files", "doms", {"verb": "email_users_welcome"})
+    return True
 
 
 def test_test(data):
@@ -35,17 +56,21 @@ def runner(with_debug):
             with open(file, "r") as fd:
                 cmd_data = json.load(fd)
             os.remove(file)
-            if "verb" not in cmd_data or "data" not in cmd_data:
-                log.log("ERROR: 'verb' or 'data' missing from 'cmd_data' data")
+            if "verb" not in cmd_data:
+                log.log(f"ERROR: 'verb' missing from '{cmd_data}' data")
             elif cmd_data["verb"] not in ROOT_CMDS:
                 log.log(f"ERROR: Verb '{cmd_data['verb']}' is not supported")
             else:
-                if not ROOT_CMDS[cmd_data["verb"]](cmd_data["data"]):
+                log.debug(f"Running cmd: {cmd_data['verb']}'")
+                if not ROOT_CMDS[cmd_data["verb"]](cmd_data.get("data", None)):
+                    log.log(f"ERROR: cmd '{cmd_data['verb']}' failed")
                     time.sleep(5)
 
 
 def run_tests():
     install_passwd_files(None)
+    print(PASSWD_FILE_PERMS)
+    print(get_grp_id("shadow"))
 
 
 def main():

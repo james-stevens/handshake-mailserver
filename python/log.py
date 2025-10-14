@@ -12,7 +12,7 @@ from policy import this_policy as policy
 
 DONE_INIT = False
 
-HOLD_DEBUG = False
+HOLD_WITH_DEBUG = False
 HOLD_WITH_LOGGING = True
 
 facility_options = {
@@ -54,21 +54,19 @@ severity_options = {
 }
 
 
-def debug(line, where=None):
-    if where is None:
-        where = inspect.stack()[1]
-    if HOLD_DEBUG:
+def debug(line):
+    where = inspect.stack()[1]
+    if HOLD_WITH_DEBUG:
         log("[DEUBG] " + line, where)
 
 
-def log(line, where=None, default_level=syslog.LOG_NOTICE):
-    if where is None:
-        where = inspect.stack()[1]
+def log(line, default_level=syslog.LOG_NOTICE):
+    where = inspect.stack()[1]
     txt = ""
     if where is not None:
         fname = where.filename.split("/")[-1].split(".")[0]
         txt = f"[{fname}:{str(where.lineno)}/{where.function}]"
-    if HOLD_DEBUG:
+    if HOLD_WITH_DEBUG:
         now = datetime.datetime.now()
         now_txt = now.strftime("%Y-%m-%d %H:%M:%S")
         print(f"{now_txt} SYSLOG{txt} {line}")
@@ -92,7 +90,7 @@ def check_off(this_facility, also_check_none=False):
 
 
 def init(inp_facility=None, with_debug=False, with_logging=True):
-    global HOLD_DEBUG
+    global HOLD_WITH_DEBUG
     global HOLD_WITH_LOGGING
     global DONE_INIT
 
@@ -113,7 +111,7 @@ def init(inp_facility=None, with_debug=False, with_logging=True):
 
     syslog.openlog(logoption=syslog.LOG_PID, facility=this_facility)
     HOLD_WITH_LOGGING = with_logging
-    HOLD_DEBUG = with_debug
+    HOLD_WITH_DEBUG = with_debug
     DONE_INIT = True
 
 

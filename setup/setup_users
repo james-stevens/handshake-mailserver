@@ -1,15 +1,20 @@
 #! /bin/sh
 
+x=150
+for user in nginx postfix vmail stunnel
+	do
+		addgroup -g ${x} -S ${user}
+		adduser -u ${x} -S -h /dev/null -G ${user} ${user}
+		x=$(expr ${x} + 1)
+	done
+
 addgroup -g 850 -S service
-adduser -u 850 -S -G service service
+adduser -u 850 -S -h /dev/null -G service service
+
 addgroup -g 851 -S rainloop
-adduser -u 851 -S -G rainloop rainloop
-deluser lp
-deluser news
-deluser uucp
-deluser cron
-deluser ftp
-deluser sshd
-deluser games
-deluser ntp
-deluser guest
+adduser -u 851 -S -h /dev/null -G rainloop rainloop
+
+for user in lp news uucp cron ftp sshd games ntp guest
+	do
+		deluser ${user}
+	done

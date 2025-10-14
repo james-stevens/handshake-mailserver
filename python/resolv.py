@@ -3,7 +3,6 @@
 # Alternative license arrangements possible, contact me for more information
 """ module to resolve DNS queries into DoH JSON objects """
 
-from syslog import syslog
 import socket
 import select
 import argparse
@@ -17,6 +16,7 @@ import dns.rdatatype
 import validators
 
 import validation
+import log
 
 DNS_MAX_RESP = 4096
 MAX_TRIES = 10
@@ -118,9 +118,9 @@ class Resolver:
             try:
                 sent_len = self.sock.sendto(self.question, (each_svr, 53))
                 ret = ret or (sent_len == len(self.question))
-            # pylint: disable=unused-variable,broad-except
+            # pylint: disable=broad-except
             except Exception as err:
-                syslog(str(err))
+                log.log(f"RESOLVER: send_all - {str(err)}")
 
         return ret  # True if at least one worked
 
@@ -143,9 +143,13 @@ class Resolver:
 
     def do_resolv(self):
         """ look for dns UDP response and read it """
+        if self.sock is None:
+            self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
         while self.tries < MAX_TRIES:
             if not self.send():
                 self.sock.close()
+                self.sock = None
                 return None
 
             while True:
@@ -165,13 +169,11 @@ class Resolver:
                         return None
 
                     ret["Responder"] = addr
-                    self.sock.close()
                     return ret
 
             self.expiry += int(self.expiry / 2) if self.expiry > 2 else 1
             self.tries += 1
 
-        self.sock.close()
         return None
 
     def ask_in_tcp(self, addr):

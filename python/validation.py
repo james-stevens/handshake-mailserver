@@ -10,7 +10,7 @@ import sys
 import misc
 import resolv
 import filecfg
-# import log
+#import log
 from policy import this_policy as policy
 
 IS_HOST = r'^(\*\.|)([\_a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
@@ -142,7 +142,7 @@ def web_valid_new_account(user):
         return True, None
 
     user_dns = res.resolv(user, "px")
-    if user_dns.get("Status", 3) != 0:
+    if user_dns is None or user_dns.get("Status", 3) != 0:
         return False, "Domain does not exist"
 
     return True, None

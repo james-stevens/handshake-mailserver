@@ -5,6 +5,9 @@ FROM alpine:3.22
 RUN apk update
 RUN apk upgrade
 
+COPY setup /usr/local/setup/
+RUN /usr/local/setup/all
+
 RUN rm -rf /run /tmp
 RUN ln -s /dev/shm /run
 RUN ln -s /dev/shm /tmp
@@ -29,9 +32,6 @@ RUN apk add py3-validators py3-idna py3-gunicorn py3-dnspython
 RUN apk add php84-fpm php84-curl php84-iconv php84-dom
 RUN apk add jq
 
-COPY setup /usr/local/setup/
-RUN /usr/local/setup/all
-
 COPY etc /usr/local/etc/
 RUN mkdir -p /usr/local/etc/uid
 RUN cp -a /etc/passwd /etc/shadow /etc/group /usr/local/etc/uid
@@ -49,6 +49,8 @@ COPY config/default.conf /etc/nginx/http.d/default.conf
 COPY config/nginx.conf /etc/nginx/nginx.conf
 COPY config/php.ini /etc/php84/php.ini
 COPY cron/every_hour /etc/periodic/hourly/
+COPY cron/every_day /etc/periodic/daily/
+COPY cron/every_15min /etc/periodic/15min/
 
 RUN chown -R rainloop: /usr/local/etc/data
 RUN chmod 700 /usr/local/etc/data

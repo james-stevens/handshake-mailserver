@@ -91,7 +91,7 @@ if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
 
 dst="${RAINLOOP}/domains/${POLICY_DEFAULT_MAIL_DOMAIN}.ini"
 src="/run/templates/webmail.localhost.ini"
-if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
+if ! test -f ${dst}; then rm -f ${RAINLOOP}/domains/*; cp -a ${src} ${dst}; fi
 
 chmod 700 ${BASE}/rainloop
 chown -R rainloop: ${BASE}/rainloop

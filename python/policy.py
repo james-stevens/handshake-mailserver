@@ -28,6 +28,7 @@ DEFAULT_POLICY_VALUES = {
 }
 
 BASE = os.environ.get("BASE", "/opt/data")
+POLICY_FILE = os.path.join(BASE, "service", "policy.json")
 SRC_DIR = "/usr/local/etc/templates"
 DST_DIR = "/run/templates"
 
@@ -36,8 +37,12 @@ class Policy:
     """ policy values manager """
     def __init__(self):
         self.BASE = BASE
-        file = BASE + "/service/policy.json"
-        self.file = fileloader.FileLoader(file)
+        self.POLICY_FILE = POLICY_FILE
+        if not os.path.isfile(POLICY_FILE):
+            with open(POLICY_FILE, "w+") as fd:
+                json.dump(DEFAULT_POLICY_VALUES, fd, indent=2)
+
+        self.file = fileloader.FileLoader(POLICY_FILE)
         self.all_data = None
         self.merge_policy_data()
 
@@ -78,6 +83,7 @@ def main():
             content = template.render(**merge_data)
             with open(dst_path, "w", encoding="UTF-8") as fd:
                 fd.write(content)
+
     with open(DST_DIR + "/__include__", "w+") as fd:
         for item in merge_data["policy"]:
             fd.write(f"export POLICY_{item.upper()}='{merge_data['policy'][item]}'\n")
