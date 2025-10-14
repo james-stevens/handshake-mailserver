@@ -57,26 +57,28 @@ severity_options = {
 def debug(line):
     where = inspect.stack()[1]
     if HOLD_WITH_DEBUG:
-        log("[DEUBG] " + line, where)
+        log("[DEUBG] " + line, syslog.LOG_DEBUG, where=where)
 
 
-def log(line, default_level=syslog.LOG_NOTICE):
-    where = inspect.stack()[1]
+def log(line, default_level=syslog.LOG_NOTICE, where=None):
+    if where is None:
+        where = inspect.stack()[1]
     txt = ""
     if where is not None:
         fname = where.filename.split("/")[-1].split(".")[0]
         txt = f"[{fname}:{str(where.lineno)}/{where.function}]"
-    if HOLD_WITH_DEBUG:
+
+    if not HOLD_WITH_LOGGING:
         now = datetime.datetime.now()
         now_txt = now.strftime("%Y-%m-%d %H:%M:%S")
         print(f"{now_txt} SYSLOG{txt} {line}")
-    else:
-        if not DONE_INIT:
-            init()
-        if HOLD_WITH_LOGGING:
-            if isinstance(default_level, str):
-                default_level = severity_options[default_level]
-            syslog.syslog(default_level, txt + " " + line)
+
+    if not DONE_INIT:
+        init()
+    if HOLD_WITH_LOGGING:
+        if isinstance(default_level, str):
+            default_level = severity_options[default_level]
+        syslog.syslog(default_level, txt + " " + line)
 
 
 def check_off(this_facility, also_check_none=False):

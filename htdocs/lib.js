@@ -324,3 +324,5 @@ function local_date(date_time)
 	d = new Date(date_time+" UTC");
 	return d.toLocaleDateString();
 }
+
+function openURL(url) { window.open(url, '_blank').focus(); }

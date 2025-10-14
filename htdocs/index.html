@@ -14,7 +14,7 @@ var debugAPI = false;
 const is_hex = /^[0-9a-fA-F]+$/;
 const pre_get_elm = [
 	"topMsg","myMsgPop","errorSpan","emailIcon","ordersIcon", "userInfo","default",
-	"userSpace","output","topSpan","businessName","messagesIcon"
+	"userSpace","output","topSpan","businessName","messagesIcon","webmailButton","themeButton"
 	];
 
 elm = {};
@@ -511,6 +511,11 @@ function catch_user_data(reply)
 	["user","policy"].forEach((item) => {
 		if (item in reply) ctx[item] = reply[item];
 		})
+
+	if ((ctx.user)&&(ctx.user.domains)&&(ctx.user.user)&&(ctx.user.user in ctx.user.domains)&&(ctx.user.domains[ctx.user.user]))
+		elm.webmailButton.style.display = ""
+	else
+		elm.webmailButton.style.display = "none"
 }
 
 
@@ -696,6 +701,11 @@ function domainDetails()
 
 
 
+function openWebMail()
+{
+	openURL("/webmail/");
+}
+
 
 
 function myStuff(with_push, value_fn)
@@ -856,6 +866,7 @@ function make_theme_popup()
 </span>
 
 <span style="display:none;" id="isLoggedIn">
+	<span style='width: 85px; display: none' id=webmailButton tabindex=0 title="Open webmail interface" class=myBtn onClick="openWebMail();">WebMail</span>
 	<span style='width: 75px;' tabindex=0 title="List account events" id="myEventsBtn" class=myBtn onClick="myStuff(true,event_details); return false;">Event Log</span>
 	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myStuff(true,domainDetails); return false;">Domains</span>
 	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myStuff(true,userDetails); return false;">Account</span>

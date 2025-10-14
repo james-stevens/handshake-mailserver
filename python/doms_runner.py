@@ -59,11 +59,19 @@ class UserData:
         self.taken_uids[this_uid] = user
         self.active_users[user] = True
         filecfg.record_info_update("users", user, {"uid": this_uid})
+        executor.create_command("doms_runner_user_add", "root", {
+            "verb": "make_home_dir",
+            "data": {
+                "uid": this_uid,
+                "user": user
+            }
+        })
         self.users_to_email.append(user)
 
     def load_users(self):
-        get_user_files = subprocess.run(["find", f"{policy.BASE}/service/users", "-type", "f", "-name", "*.json"],
-                                        capture_output=True)
+        get_user_files = subprocess.run(
+            ["find", os.path.join(policy.BASE, "service", "users"), "-type", "f", "-name", "*.json"],
+            capture_output=True)
         self.all_users = {}
         for file in get_user_files.stdout.decode('utf-8').strip().split():
             lock = os.path.join(os.path.dirname(file), ".lock")
@@ -171,8 +179,8 @@ DOMS_CMDS = {
 }
 
 
-def runner(with_debug):
-    log.init("DOMS backend", with_debug=with_debug)
+def runner(with_debug, with_logging):
+    log.init("DOMS backend", with_debug=with_debug, with_logging=with_logging)
     log.log("DOMS backend running")
     while True:
         if (file := executor.find_oldest_cmd("doms")) is None:
@@ -198,6 +206,7 @@ def run_tests():
 def main():
     parser = argparse.ArgumentParser(description='DOMS Jobs Runner')
     parser.add_argument("-D", "--debug", default=False, help="Debug mode", action="store_true")
+    parser.add_argument("-S", "--syslog", default=False, help="With syslog", action="store_true")
     parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
     parser.add_argument("-O", "--one", help="Run one module")
     args = parser.parse_args()
@@ -206,18 +215,18 @@ def main():
     Users.run_mx_check(None)
 
     if args.one:
+        log.init("DOMS run one", with_debug=True, with_logging=args.syslog)
         if args.one not in DOMS_CMDS:
             log.log("ERROR: DOMS CMD '{args.one}' not valid")
             return
-        log.init("DOMS run one", with_debug=True)
         DOMS_CMDS[args.one](None)
 
     elif args.test:
-        log.init("DOMS run test", with_debug=True)
+        log.init("DOMS run test", with_debug=True, with_logging=args.syslog)
         run_tests()
 
     else:
-        runner(args.debug)
+        runner(args.debug, args.syslog)
 
 
 if __name__ == "__main__":

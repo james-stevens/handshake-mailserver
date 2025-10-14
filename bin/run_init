@@ -9,11 +9,12 @@ do
 	cp -a ${SRC}/uid/${file} /run/${file}
 done
 
-/usr/local/python/doms_runner.py -O new_unix_files
-/usr/local/python/root_runner.py -O install_passwd_files
+/usr/local/python/doms_runner.py -D -S -O new_unix_files
+/usr/local/python/root_runner.py -D -S -O install_passwd_files
 
 mkdir -p /run/exec/root /run/exec/doms /run/sessions
 chmod 777 /run/exec/root /run/exec/doms /run/sessions
+chown service: /run/exec/doms
 
 if ! test -d ${BASE}/service
 	then
