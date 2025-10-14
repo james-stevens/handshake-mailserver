@@ -1,0 +1,3 @@
+#! /bin/sh
+
+/usr/local/python/give_doms_cmd.py run_mx_check
