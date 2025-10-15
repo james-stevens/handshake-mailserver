@@ -21,6 +21,7 @@ elm = {};
 gbl = {
 	"theme": window.localStorage.theme,
 
+	user_refresh: 10000,
 	tick: "&#x2705;",
 	cross: "&#x274c;",
 	timer: "&#x23f3;",
@@ -215,7 +216,7 @@ function go_welcome_page(with_push)
 function user_info()
 {
 	if ((ctx.user)&&(ctx.user.user)) {
-		elm.userInfo.innerHTML = `Logged in as: <b>${ctx.user.user}</b>`;
+		elm.userInfo.innerHTML = `Logged in as: <b>${toUnicode(ctx.user.user)}</b>`;
 		}
 }
 
@@ -243,14 +244,13 @@ function doRegister()
 
 	let f = document.formRegister;
 
-	console.log("doRegister",valid_email.test(f.email.value),fqdnCheck.test(f.name.value));
-
+	let fqdn = toASCII(f.user.value);
 	if (f.password.value != f.confirm.value) return regErr("Passwords do not match",f.password);
 	if (!valid_email.test(f.email.value)) return regErr("Invalid email address",f.email);
-	if (!fqdnCheck.test(f.user.value)) return regErr("Invalid domain name",f.user);
+	if (!fqdnCheck.test(fqdn)) return regErr("Invalid domain name",f.user);
 
 	let data = {
-		"user":f.user.value,
+		"user":fqdn,
 		"email":f.email.value,
 		"password":f.password.value,
 		"confirm":f.confirm.value
@@ -273,6 +273,9 @@ function doRegister()
 
 function doLogin()
 {
+	if (ctx.user_time) clearTimeout(ctx.user_time);
+	delete ctx.user_time;
+
 	function regErr(err,item)
 	{
 		errMsg(err,"loginPopup");
@@ -282,9 +285,10 @@ function doLogin()
 	}
 
 	let f = document.formLogin;
-	if (!fqdnCheck.test(f.user.value)) return regErr("Invalid login name",f.user);
+	let fqdn = toASCII(f.user.value)
+	if (!fqdnCheck.test(fqdn)) return regErr("Invalid login name",f.user);
 
-	let data = { "user":f.user.value, "password":f.password.value };
+	let data = { "user":fqdn, "password":f.password.value };
 
 	callApi("users/login",(ret,reply) => {
 		if (!ret) {
@@ -676,25 +680,42 @@ function userDetails()
 		};
 	let x = "<table align=center width=75%>"
 	for(let i in ctx.user) 
-		if (i in acct_desc)
-			x += `<tr><td align=right>${acct_desc[i]}&nbsp;:&nbsp;</td><td>${ctx.user[i]}</td></tr>`;
+		if (i in acct_desc) {
+			let val = ctx.user[i];
+			if (i=="user") val = toUnicode(val);
+			x += `<tr><td align=right>${acct_desc[i]}&nbsp;:&nbsp;</td><td>${val}</td></tr>`;
+			}
 	return x+"</table>";
 }
 
+
+function is_email_active(user,idx)
+{
+	let [prefix,dom] = user.identities[idx].split("@");
+
+	if ((gbl.config)
+		&&(gbl.config.policy)
+		&&(gbl.config.policy.default_mail_domain)
+		&&(gbl.config.policy.default_mail_domain==dom)
+		&&(user.domains[user])
+		) return true;
+
+	return ((dom in user.domains)&&(user.domains[dom]));
+}
 
 
 function domainDetails()
 {
 	let x = "<table align=center width=75%>"
-	x += settings_header("Domains",true);
+	x += settings_header("My Domains",true);
 	x += "<table width=100%>"
 	x += "<colgroup><col/><col width=200px/></colgroup>"
-	for(let i in ctx.user.domains) x += `<tr><td>${i}</td><td>${(ctx.user.domains[i])?gbl.tick:gbl.cross}</td></tr>`;
+	for(let i in ctx.user.domains) x += `<tr><td>${toUnicode(i)}</td><td>${(ctx.user.domains[i])?gbl.tick:gbl.cross}</td></tr>`;
 	x += "</table></td></tr>";
-	x += settings_header("Email Addresses",false);
+	x += settings_header("My Email Addresses",false);
 	x += "<table width=100%>"
 	x += "<colgroup><col/><col width=200px/></colgroup>"
-	for(let i in ctx.user.identities) x += `<tr><td>${i}</td><td>${(ctx.user.identities[i])?gbl.tick:gbl.cross}</td></tr>`;
+	for(let i in ctx.user.identities) x += `<tr><td>${ctx.user.identities[i]}</td><td>${is_email_active(ctx.user,i)?gbl.tick:gbl.cross}</td></tr>`;
 	x += "</table></td></tr>";
 	return x+"</table>";
 }
@@ -708,9 +729,36 @@ function openWebMail()
 
 
 
-function myStuff(with_push, value_fn)
+function refresh_user_space()
 {
-	if (with_push) push_hist("myAccount");
+	if ((!ctx.user_space_fn)||(!ctx.user)) return;
+	callApi("users/details",(ok,reply) => {
+		if (ok) {
+			catch_user_data(reply);
+			let next_val = ctx.user_space_fn();
+			if (next_val != ctx.last_user_val) {
+				ctx.last_user_val = next_val;
+				elm.userSpace.innerHTML = next_val;
+				}
+			ctx.user_time = setTimeout(refresh_user_space,gbl.user_refresh);
+			}
+		});
+}
+
+
+
+function myStuff(with_push, value_to_show)
+{
+	const val_calls = { 
+		"myAccount": userDetails,
+		"myDomains": domainDetails,
+		"myEvents": event_details
+		};
+
+	let value_fn = val_calls[value_to_show];
+
+	if (with_push) push_hist(value_to_show);
+	if (ctx.user_time) clearTimeout(ctx.user_time);
 
 	show_one_space("userSpace");
 	elm.userSpace.innerHTML = "";
@@ -723,7 +771,10 @@ function myStuff(with_push, value_fn)
 			}
 		catch_user_data(reply);
 		user_info();
-		elm.userSpace.innerHTML = value_fn();
+		ctx.last_user_val = value_fn();
+		elm.userSpace.innerHTML = ctx.last_user_val;
+		ctx.user_space_fn = value_fn;
+		ctx.user_time = setTimeout(refresh_user_space,gbl.user_refresh);
 		size_one_space();
 		});
 }
@@ -867,9 +918,9 @@ function make_theme_popup()
 
 <span style="display:none;" id="isLoggedIn">
 	<span style='width: 85px; display: none' id=webmailButton tabindex=0 title="Open webmail interface" class=myBtn onClick="openWebMail();">WebMail</span>
-	<span style='width: 75px;' tabindex=0 title="List account events" id="myEventsBtn" class=myBtn onClick="myStuff(true,event_details); return false;">Event Log</span>
-	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myStuff(true,domainDetails); return false;">Domains</span>
-	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myStuff(true,userDetails); return false;">Account</span>
+	<span style='width: 75px;' tabindex=0 title="List account events" id="myEventsBtn" class=myBtn onClick="myStuff(true,'myEvents'); return false;">Event Log</span>
+	<span style='width: 75px;' tabindex=0 title="List my domains" id="myDomainsBtn" class=myBtn onClick="myStuff(true,'myDomains'); return false;">Domains</span>
+	<span style='width: 75px;' tabindex=0 title="My account details" id="myAccountBtn" class=myBtn onClick="myStuff(true,'myAccount'); return false;">Account</span>
 	<span style='width: 75px;' tabindex=0 title="Log me out" class=myBtn onClick="doLogOut(); return false;">Logout</span>
 </span>
 </td></tr>

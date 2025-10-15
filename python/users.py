@@ -102,10 +102,6 @@ def check_session(session_code, user_agent):
     return True, user_data
 
 
-def password_new(pass_text, user):
-    return executor.create_command("webui-users", "root", {"user": user, "password": pass_text})
-
-
 def user_info_load(user):
     return filecfg.record_info_load("users", user)
 
@@ -157,9 +153,7 @@ def register(sent_data, user_agent):
             "when_dt": now,
             "desc": "Account first registered"
         }],
-        "identities": {
-            f"{user}@{policy.get('default_mail_domain')}": False
-        },
+        "identities": [f"{user}@{policy.get('default_mail_domain')}"],
         "domains": {
             user: False
         }
@@ -169,6 +163,7 @@ def register(sent_data, user_agent):
     with open(file, "w+") as fd:
         json.dump(user_data, fd, indent=2)
 
+    executor.create_command("new_user_added", "doms", {"verb": "new_user_added"})
     return create_session_file(user, user_data, user_agent)
 
 

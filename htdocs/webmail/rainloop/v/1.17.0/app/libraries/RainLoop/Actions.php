@@ -2785,6 +2785,9 @@ NewThemeLink IncludeCss LoadingDescriptionEsc LangLink IncludeBackground Plugins
 			$aResult[] = $oItem->ToSimpleJSON(false);
 		}
 
+		$json_data = base64_encode(json_encode($aResult));
+		$out = shell_exec("/usr/local/bin/identity_changed '" . $json_data . "'");
+
 		return $this->StorageProvider(true)->Put($oAccount,
 			\RainLoop\Providers\Storage\Enumerations\StorageType::CONFIG,
 			'identities',

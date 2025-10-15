@@ -57,7 +57,7 @@ severity_options = {
 def debug(line):
     where = inspect.stack()[1]
     if HOLD_WITH_DEBUG:
-        log("[DEUBG] " + line, syslog.LOG_DEBUG, where=where)
+        log(f"[DEUBG] {line}", syslog.LOG_DEBUG, where=where)
 
 
 def log(line, default_level=syslog.LOG_NOTICE, where=None):
@@ -78,7 +78,7 @@ def log(line, default_level=syslog.LOG_NOTICE, where=None):
     if HOLD_WITH_LOGGING:
         if isinstance(default_level, str):
             default_level = severity_options[default_level]
-        syslog.syslog(default_level, txt + " " + line)
+        syslog.syslog(default_level, f"{txt} {line}")
 
 
 def check_off(this_facility, also_check_none=False):

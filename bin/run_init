@@ -23,7 +23,7 @@ if ! test -d ${BASE}/service
 chown -R service: ${BASE}/service
 
 
-${PYBASE}/policy.py
+${PYBASE}/merge_templates.py
 . /run/templates/__include__
 
 if ! grep -q '^manager:' /etc/passwd

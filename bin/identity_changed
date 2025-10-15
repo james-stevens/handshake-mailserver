@@ -1,0 +1,3 @@
+#! /bin/sh
+
+/usr/local/python/executor.py -t doms -v identity_changed -d "{ \"data\": \"$*\" }"

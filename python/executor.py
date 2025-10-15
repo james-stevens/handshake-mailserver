@@ -38,14 +38,18 @@ def find_oldest_cmd(cmd_type):
 def run_tests():
     print(create_command("test", "root", {"verb": "test", "data": {"value": "this is a test"}}))
     print("root ->", find_oldest_cmd("root"))
-    print("norm ->", find_oldest_cmd("norm"))
+    print("doms ->", find_oldest_cmd("doms"))
     print(oct(os.stat(find_oldest_cmd("root")).st_mode))
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='ROOT Jobs Runner')
-    parser.add_argument("-t", "--type", help="Command type (root/norm)")
+    parser.add_argument("-t", "--type", help="Command type (root/doms)")
     parser.add_argument("-d", "--data", help="Command data")
     parser.add_argument("-v", "--verb", help="Command verb")
     args = parser.parse_args()
-    create_command("manual", args.type, {"verb": args.verb, "data": json.loads(args.data)})
+    send_data = {"verb": args.verb}
+    if args.data:
+        send_data["data"] = json.loads(args.data)
+
+    create_command("manual", args.type, send_data)

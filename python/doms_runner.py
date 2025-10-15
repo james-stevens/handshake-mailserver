@@ -6,26 +6,30 @@ import time
 import filelock
 import subprocess
 import argparse
+import base64
+import validators
 
 from policy import this_policy as policy
 import executor
 import filecfg
 import resolv
+import validation
 import log
+import misc
 
 BASE_UX_DIR = "/usr/local/etc/uid"
 
 
-def check_mx_match(user, mx_rrs):
-    if ((mx_rrs is None) or (mx_rrs.get("Status", 99) != 0) or ("Answer" not in mx_rrs)
-            or (not isinstance(mx_rrs["Answer"], list)) or (len(mx_rrs["Answer"]) != 1)):
-        return False
-    mx = mx_rrs["Answer"][0]
-    if mx.get("type", 0) != 15 or mx.get("data", None) is None:
-        return False
-    mx_rr = mx["data"].rstrip(".").lower().split()[1]
-    chk_rr = (user["mx"] + "." + policy.get("default_mail_domain")).rstrip(".").lower()
-    return chk_rr == mx_rr
+def get_user_from_emails(emails):
+    default_mail_domain = policy.get("default_mail_domain")
+    ret_user = None
+    new_list = []
+    for email in emails:
+        user, dom = email
+        new_list.append([user, dom.lower()])
+        if dom == default_mail_domain:
+            ret_user = user
+    return ret_user, new_list
 
 
 class UserData:
@@ -79,7 +83,6 @@ class UserData:
             with filelock.FileLock(lock), open(file, "r") as fd:
                 self.all_users[user] = json.load(fd)
             self.all_users[user]["user"] = user
-            self.all_users[user]["file"] = file
 
     def new_unix_files(self, data):
         base_data = {}
@@ -112,6 +115,7 @@ class UserData:
                 return x
 
     def user_age_check(self, data):
+        # CODE - flush away users that didn't activate
         pass
 
     def run_mx_check(self, data):
@@ -122,14 +126,14 @@ class UserData:
             doms = this_user.get("domains", None)
             if doms is not None:
                 for dom in [d for d in doms if not doms[d]]:
-                    ret = self.check_one_domain(this_user, dom)
-                    need_remake_system_files = need_remake_system_files or ret
-                    save_this_user = save_this_user or ret
+                    if self.check_one_domain(this_user, dom):
+                        need_remake_system_files = save_this_user = True
+
             if save_this_user:
                 log.debug(f"saving user '{this_user['user']}'")
                 filecfg.record_info_update("users", this_user["user"], {
-                    "identities": this_user["identities"],
-                    "domains": this_user["domains"]
+                    "domains": this_user["domains"],
+                    "events": this_user["events"]
                 })
         log.debug(f"need_remake_system_files: {need_remake_system_files}")
         if need_remake_system_files:
@@ -138,7 +142,7 @@ class UserData:
         return True
 
     def check_one_domain(self, this_user, domain):
-        if not check_mx_match(this_user, self.resolver.resolv(domain, "mx")):
+        if not validation.check_mx_match(this_user, self.resolver.resolv(domain, "mx")):
             log.debug(f"check_one_domain FAIL: {this_user['user']} {domain}")
             return False
 
@@ -146,12 +150,9 @@ class UserData:
             self.assign_uid(this_user)
 
         this_user["domains"][domain] = True
-        for email in this_user["identities"]:
-            if not this_user["identities"][email]:
-                split_email = email.rstrip(".").lower().split("@")
-                if split_email[1] == domain or (split_email[1] == policy.get("default_mail_domain")
-                                                and split_email[0] == domain):
-                    this_user["identities"][email] = True
+        this_user["events"].append({"when_dt": misc.now(), "desc": "Domain '{domain}' is now active"})
+
+        # CODE - email user a new domain is now active, if secondary domain!
         log.debug(f"check_one_domain PASS: {this_user['user']}, {domain}")
         return True
 
@@ -160,6 +161,52 @@ class UserData:
             log.debug(f"Email welcome to '{user}'")
         self.users_to_email = []
         # CODE - send out email
+        return True
+
+    def identity_changed(self, data):
+        emails = [
+            item["Email"].rstrip(".").split("@")
+            for item in json.loads(base64.b64decode(data.get("data", "{}")).decode("utf-8"))
+            if validators.email(item["Email"])
+        ]
+        user, emails = get_user_from_emails(emails)
+        log.debug(f"USER:{user}, EMAILS:{emails}")
+        if user is None:
+            log.log(f"ERROR: Unbable to identify user in {emails}")
+            return False
+        if user not in self.all_users:
+            log.log(f"ERROR: user '{user}' does not seem to exist")
+            return False
+
+        this_user = self.all_users[user]
+        this_user["identities"] = [user + "@" + dom for user, dom in emails]
+        email_doms = [dom for __, dom in emails]
+
+        for dom in list(this_user["domains"]):
+            if dom not in email_doms:
+                del this_user["domains"][dom]
+
+        default_mail_domain = policy.get("default_mail_domain")
+        for dom in email_doms:
+            if dom not in this_user["domains"] and dom != default_mail_domain:
+                this_user["domains"][dom] = False
+
+        this_user["identities"].sort()
+        this_user["events"].append({"when_dt": misc.now(), "desc": "Email Identities updated"})
+        filecfg.record_info_update("users", this_user["user"], {
+            "events": this_user["events"],
+            "identities": this_user["identities"],
+            "domains": this_user["domains"]
+        })
+        return True
+
+    def new_user_added(self, data):
+        if (user := data.get("user", None)) is None:
+            return False
+        if (this_user := filecfg.record_info_load("users", user)) is None:
+            return False
+        this_user["user"] = user
+        self.all_users[user] = this_user
         return True
 
 
@@ -171,6 +218,8 @@ def test_test(data):
 Users = UserData()
 
 DOMS_CMDS = {
+    "new_user_added": Users.new_user_added,
+    "identity_changed": Users.identity_changed,
     "email_users_welcome": Users.email_users_welcome,
     "user_age_check": Users.user_age_check,
     "run_mx_check": Users.run_mx_check,
@@ -209,6 +258,7 @@ def main():
     parser.add_argument("-S", "--syslog", default=False, help="With syslog", action="store_true")
     parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
     parser.add_argument("-O", "--one", help="Run one module")
+    parser.add_argument("-d", "--data", help="data for running one")
     args = parser.parse_args()
 
     Users.startup()
@@ -219,7 +269,7 @@ def main():
         if args.one not in DOMS_CMDS:
             log.log("ERROR: DOMS CMD '{args.one}' not valid")
             return
-        DOMS_CMDS[args.one](None)
+        DOMS_CMDS[args.one](json.loads(args.data) if args.data else None)
 
     elif args.test:
         log.init("DOMS run test", with_debug=True, with_logging=args.syslog)

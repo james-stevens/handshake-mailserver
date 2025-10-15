@@ -10,6 +10,7 @@ import sys
 import misc
 import resolv
 import filecfg
+import icann_tlds
 #import log
 from policy import this_policy as policy
 
@@ -17,8 +18,22 @@ IS_HOST = r'^(\*\.|)([\_a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z
 IS_FQDN = r'^([a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
 IS_TLD = r'^[a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}[.]?$'
 
-with open("/usr/local/etc/icann_tlds", "r") as fd:
-    icann_tlds = {line.strip(): True for line in fd.readlines()}
+
+def check_mx_match(user, mx_rrs):
+    if ((mx_rrs is None) or (mx_rrs.get("Status", 99) != 0) or ("Answer" not in mx_rrs)
+            or (not isinstance(mx_rrs["Answer"], list)) or (len(mx_rrs["Answer"]) != 1)):
+        return False
+    mx = mx_rrs["Answer"][0]
+    if mx.get("type", 0) != 15 or mx.get("data", None) is None:
+        return False
+    mx_rr = mx["data"].rstrip(".").lower().split()[1]
+    chk_rr = (user["mx"] + "." + policy.get("default_mail_domain")).rstrip(".").lower()
+    return chk_rr == mx_rr
+
+
+def email_active(email, domains):
+    split_mail = email.rstrip(".").lower().split("@")
+    return split_mail[1] in domains and domains[split_mail[1]]
 
 
 def has_idn(name):
@@ -106,7 +121,7 @@ def pre_check_user(user, is_new):
         return False, "Invalid account name"
 
     tld = user.split(".")[-1]
-    if tld in icann_tlds and not policy.get("allow_icann_domains"):
+    if tld in icann_tlds.ICANN_TLDS and not policy.get("allow_icann_domains"):
         return False, "ICANN domains are not allowed"
 
     file, __ = filecfg.user_file_name(user, True)
@@ -150,6 +165,11 @@ def web_valid_new_account(user):
 
 # for testing
 if __name__ == "__main__":
+    print("he")
+    #print(email_active(sys.argv[1],dict.fromkeys(sys.argv[2].split(","),True)))
+
+
+def not_now():
     x = {"user": sys.argv[1]}
     print("OK NEW:", web_validate(x, {"user": [True, web_valid_new_account]}))
     print("OK REG:", web_validate(x, {"user": [True, web_valid_reg_account]}))
@@ -157,8 +177,6 @@ if __name__ == "__main__":
     print("OK HOST:", web_validate({"host": "1 2"}, {"host": [True, is_valid_fqdn]}))
     print(x)
 
-
-def not_now():
     for host in ["A_A", "A_A.xxxx.cccc", "www.gstatic.com.", "m.files.bbci.co.uk."]:
         print("is_valid_host", host, is_valid_host(host))
         print("is_valid_fqdn", host, is_valid_fqdn(host))
