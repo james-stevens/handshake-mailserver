@@ -49,10 +49,15 @@ class UserData:
         }
         self.taken_uids = {user["uid"]: user for user in self.active_users if "uid" in user}
 
+        self.need_remake_system_files = False
+        self.need_remake_mail_files = False
         for user in self.active_users:
             this_user = self.all_users[user]
             if "uid" not in this_user:
                 self.assign_uid(this_user)
+        self.run_mx_check()
+        self.check_remake_system_files()
+        self.check_remake_mail_files()
 
     def assign_uid(self, this_user):
         if "uid" in this_user:
@@ -71,6 +76,7 @@ class UserData:
             }
         })
         self.users_to_email.append(user)
+        self.need_remake_system_files = True
 
     def load_users(self):
         get_user_files = subprocess.run(
@@ -115,31 +121,52 @@ class UserData:
                 return x
 
     def user_age_check(self, data):
+        log.debug("User age check")
         # CODE - flush away users that didn't activate
         pass
 
     def run_mx_check(self, data):
-        need_remake_system_files = False
+        self.need_remake_mail_files = self.need_remake_system_files = False
         for user in self.all_users:
-            this_user = self.all_users[user]
-            save_this_user = False
-            doms = this_user.get("domains", None)
-            if doms is not None:
-                for dom in [d for d in doms if not doms[d]]:
-                    if self.check_one_domain(this_user, dom):
-                        need_remake_system_files = save_this_user = True
-
-            if save_this_user:
-                log.debug(f"saving user '{this_user['user']}'")
-                filecfg.record_info_update("users", this_user["user"], {
-                    "domains": this_user["domains"],
-                    "events": this_user["events"]
-                })
-        log.debug(f"need_remake_system_files: {need_remake_system_files}")
-        if need_remake_system_files:
-            self.new_unix_files(None)
-            executor.create_command("doms_runner_user_update", "root", {"verb": "install_passwd_files"})
+            self.check_one_user(self.all_users[user])
+        self.check_remake_system_files()
         return True
+
+    def new_mail_files(self):
+        # CODE - write new postfix files
+        pass
+
+    def check_remake_mail_files(self):
+        log.debug(f"need_remake_mail_files: {self.need_remake_mail_files}")
+        if not self.need_remake_mail_files:
+            return
+        self.need_remake_mail_files = False
+        self.new_mail_files(None)
+        executor.create_command("doms_runner_user_update", "root", {"verb": "install_mail_files"})
+
+    def check_remake_system_files(self):
+        log.debug(f"need_remake_system_files: {self.need_remake_system_files}")
+        if not self.need_remake_system_files:
+            return
+        self.need_remake_system_files = False
+        self.new_unix_files(None)
+        executor.create_command("doms_runner_user_update", "root", {"verb": "install_passwd_files"})
+
+    def check_one_user(self, this_user):
+        save_this_user = False
+        doms = this_user.get("domains", None)
+        if doms is not None:
+            for dom in [d for d in doms if not doms[d]]:
+                if self.check_one_domain(this_user, dom):
+                    save_this_user = True
+                    self.need_remake_mail_files = True
+
+        if save_this_user:
+            log.debug(f"saving user '{this_user['user']}'")
+            filecfg.record_info_update("users", this_user["user"], {
+                "domains": this_user["domains"],
+                "events": this_user["events"]
+            })
 
     def check_one_domain(self, this_user, domain):
         if not validation.check_mx_match(this_user, self.resolver.resolv(domain, "mx")):
@@ -160,7 +187,7 @@ class UserData:
         for user in self.users_to_email:
             log.debug(f"Email welcome to '{user}'")
         self.users_to_email = []
-        # CODE - send out email
+        # CODE - send out welcome email
         return True
 
     def identity_changed(self, data):
@@ -179,6 +206,7 @@ class UserData:
             return False
 
         this_user = self.all_users[user]
+
         this_user["identities"] = [user + "@" + dom for user, dom in emails]
         email_doms = [dom for __, dom in emails]
 
@@ -198,6 +226,8 @@ class UserData:
             "identities": this_user["identities"],
             "domains": this_user["domains"]
         })
+
+        self.check_one_user(this_user)
         return True
 
     def new_user_added(self, data):

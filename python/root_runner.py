@@ -37,6 +37,14 @@ def make_home_dir(data):
     return True
 
 
+def install_mail_files(data):
+    # CODE - rename mail files & recreate their db files
+    # transport_maps = lmdb:/opt/data/postfix/data/transport
+    # virtual_alias_maps = hash:/etc/postfix/virtual
+    #     postmaster@virtual-alias.domain postmaster
+    pass
+
+
 def install_passwd_files(data):
     for file in ["passwd", "shadow", "group"]:
         src = f"/run/{file}.new"
@@ -54,7 +62,12 @@ def test_test(data):
     return True
 
 
-ROOT_CMDS = {"make_home_dir": make_home_dir, "install_passwd_files": install_passwd_files, "test": test_test}
+ROOT_CMDS = {
+    "install_mail_files": install_mail_files,
+    "make_home_dir": make_home_dir,
+    "install_passwd_files": install_passwd_files,
+    "test": test_test
+}
 
 
 def runner(with_debug, with_logging):

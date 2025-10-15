@@ -697,7 +697,7 @@ function is_email_active(user,idx)
 		&&(gbl.config.policy)
 		&&(gbl.config.policy.default_mail_domain)
 		&&(gbl.config.policy.default_mail_domain==dom)
-		&&(user.domains[user])
+		&&(user.domains)&&(user.domains[user.user])
 		) return true;
 
 	return ((dom in user.domains)&&(user.domains[dom]));
