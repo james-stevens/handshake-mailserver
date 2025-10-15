@@ -19,9 +19,18 @@ import misc
 
 BASE_UX_DIR = "/usr/local/etc/uid"
 
+def is_email_active(user, email, domains):
+    pfx, dom = email.rstrip(".").lower().split("@")
+    default_mail_domain = policy.get("default_mail_domain").rstrip(".").lower()
+
+    if default_mail_domain == dom and domains.get(user,False):
+        return True
+
+    return domains.get(dom,False)
+
 
 def get_user_from_emails(emails):
-    default_mail_domain = policy.get("default_mail_domain")
+    default_mail_domain = policy.get("default_mail_domain").rstrip(".").lower()
     ret_user = None
     new_list = []
     for email in emails:
@@ -34,7 +43,7 @@ def get_user_from_emails(emails):
 
 class UserData:
     def __init__(self):
-        self.users_to_email = []
+        self.users_to_welcome = []
 
     def startup(self):
         self.load_user_details()
@@ -47,7 +56,7 @@ class UserData:
             for user in self.all_users
             if user in self.all_users[user]["domains"] and self.all_users[user]["domains"][user]
         }
-        self.taken_uids = {user["uid"]: user for user in self.active_users if "uid" in user}
+        self.taken_uids = {self.all_users[user]["uid"]: user for user in self.active_users if "uid" in self.all_users[user]}
 
         self.need_remake_system_files = False
         self.need_remake_mail_files = False
@@ -55,9 +64,8 @@ class UserData:
             this_user = self.all_users[user]
             if "uid" not in this_user:
                 self.assign_uid(this_user)
-        self.run_mx_check()
-        self.check_remake_system_files()
-        self.check_remake_mail_files()
+
+        self.run_mx_check(None)
 
     def assign_uid(self, this_user):
         if "uid" in this_user:
@@ -75,7 +83,7 @@ class UserData:
                 "user": user
             }
         })
-        self.users_to_email.append(user)
+        self.users_to_welcome.append(user)
         self.need_remake_system_files = True
 
     def load_users(self):
@@ -96,29 +104,33 @@ class UserData:
             with open(os.path.join(BASE_UX_DIR, file), "r") as fd:
                 base_data[file] = [line.strip() for line in fd.readlines()]
 
-        with open("/run/passwd.new", "w+") as fd:
+        with open("/run/passwd.tmp", "w+") as fd:
             lines = base_data["passwd"]
             for user in self.active_users:
                 this_user = self.all_users[user]
                 lines.append(f"{user}:x:{this_user['uid']}:100::/opt/data/homedirs/{user}:/sbin/nologin")
             fd.write("\n".join(lines) + "\n")
 
-        with open("/run/shadow.new", "w+") as fd:
+        with open("/run/shadow.tmp", "w+") as fd:
             lines = base_data["shadow"]
             for user in self.active_users:
                 this_user = self.all_users[user]
                 lines.append(f"{user}:{this_user['password']}:20367:0:99999:7:::")
             fd.write("\n".join(lines) + "\n")
 
-        with open("/run/group.new", "w+") as fd:
+        with open("/run/group.tmp", "w+") as fd:
             lines = [line for line in base_data["group"] if line[:6] != "users:"]
             lines.append("users:x:100:" + ",".join(list(self.active_users)))
             fd.write("\n".join(lines) + "\n")
+
+        for file in ["passwd", "shadow", "group"]:
+            os.rename(f"/run/{file}.tmp",f"/run/{file}.new")
 
     def find_free_uid(self):
         for x in range(1000, 30000):
             if x not in self.taken_uids:
                 return x
+        return None
 
     def user_age_check(self, data):
         log.debug("User age check")
@@ -130,6 +142,7 @@ class UserData:
         for user in self.all_users:
             self.check_one_user(self.all_users[user])
         self.check_remake_system_files()
+        self.check_remake_mail_files()
         return True
 
     def new_mail_files(self):
@@ -179,14 +192,14 @@ class UserData:
         this_user["domains"][domain] = True
         this_user["events"].append({"when_dt": misc.now(), "desc": "Domain '{domain}' is now active"})
 
-        # CODE - email user a new domain is now active, if secondary domain!
         log.debug(f"check_one_domain PASS: {this_user['user']}, {domain}")
+        # CODE - email user a new domain is now active, if secondary domain!
         return True
 
     def email_users_welcome(self, data):
-        for user in self.users_to_email:
+        for user in self.users_to_welcome:
             log.debug(f"Email welcome to '{user}'")
-        self.users_to_email = []
+        self.users_to_welcome = []
         # CODE - send out welcome email
         return True
 
@@ -211,10 +224,10 @@ class UserData:
         email_doms = [dom for __, dom in emails]
 
         for dom in list(this_user["domains"]):
-            if dom not in email_doms:
+            if dom not in email_doms and dom != user:
                 del this_user["domains"][dom]
 
-        default_mail_domain = policy.get("default_mail_domain")
+        default_mail_domain = policy.get("default_mail_domain").rstrip(".").lower()
         for dom in email_doms:
             if dom not in this_user["domains"] and dom != default_mail_domain:
                 this_user["domains"][dom] = False
@@ -279,7 +292,10 @@ def runner(with_debug, with_logging):
 
 
 def run_tests():
-    print(json.dumps(Users.all_users, indent=2))
+    Users.startup()
+    for user in Users.all_users:
+        for email in Users.all_users[user]["identities"]:
+            print(Users.all_users[user]["uid"],user,email)
 
 
 def main():
@@ -292,7 +308,6 @@ def main():
     args = parser.parse_args()
 
     Users.startup()
-    Users.run_mx_check(None)
 
     if args.one:
         log.init("DOMS run one", with_debug=True, with_logging=args.syslog)
