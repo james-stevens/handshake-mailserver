@@ -37,7 +37,15 @@ RUN mkdir -p /usr/local/etc/uid
 RUN cp -a /etc/passwd /etc/shadow /etc/group /usr/local/etc/uid
 RUN cp -a /etc/passwd /etc/shadow /etc/group /run
 
+RUN chown -R rainloop: /usr/local/etc/data
+RUN chmod 700 /usr/local/etc/data
+
+RUN ln -fns /run/passwd /etc/passwd
+RUN ln -fns /run/shadow /etc/shadow
+RUN ln -fns /run/group /etc/group
 RUN ln -s /opt/data/sasl2 /etc/sasl2
+
+RUN rm -f /var/cache/apk/*
 
 COPY config/default.conf /etc/nginx/http.d/default.conf
 COPY config/inittab /etc/
@@ -52,17 +60,9 @@ COPY cron/every_hour /etc/periodic/hourly/
 COPY cron/every_day /etc/periodic/daily/
 COPY cron/every_15min /etc/periodic/15min/
 
-RUN chown -R rainloop: /usr/local/etc/data
-RUN chmod 700 /usr/local/etc/data
-
 COPY bin /usr/local/bin/
 COPY htdocs /usr/local/htdocs/
 
 COPY python /usr/local/python
 RUN python3 -m compileall /usr/local/python
-
-RUN ln -fns /run/passwd /etc/passwd
-RUN ln -fns /run/shadow /etc/shadow
-RUN ln -fns /run/group /etc/group
-RUN rm -f /var/cache/apk/*
 CMD [ "/usr/local/bin/run_init" ]
