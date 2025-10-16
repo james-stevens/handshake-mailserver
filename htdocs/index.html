@@ -520,6 +520,8 @@ function catch_user_data(reply)
 		elm.webmailButton.style.display = ""
 	else
 		elm.webmailButton.style.display = "none"
+
+	if ((ctx.user)&&(ctx.user.events)) ctx.user.events.reverse();
 }
 
 
@@ -667,42 +669,72 @@ function event_details()
 }
 
 
+async function copyToClip(data,elm_name)
+{
+	if (!('clipboard' in navigator)) {
+		errMsg("Clipboard access not supported in this browser/environment", elm_name);
+		return false;
+		}
+
+	try {
+		await navigator.clipboard.writeText(data);
+		errMsg("Copied to clipboard", elm_name);
+	} catch (err) {
+		errMsg("Copy to clipboard failed: " + err.message, elm_name);
+	}
+
+    return false;
+}
+
+
 
 function userDetails()
 {
-	const acct_desc = {	
-		"created_dt": "Created",
-		"amended_dt": "Last Updated",
-		"user": "Account Name",
-		"mx": "Your MX Host Name",
-		"email": "Recovery Email",
-		"last_login_dt": "Last Login",
-		};
+	const acct_desc = [	
+		[ "user", "Account Name" ],
+		[ "email", "Recovery Email" ],
+		[ "mx", "Your MX Host Name" ],
+		[ "last_login_dt", "Last Login" ],
+		[ "created_dt", "Created" ],
+		[ "amended_dt", "Last Updated" ],
+		];
+
 	let x = "<table align=center width=75%>"
-	for(let i in ctx.user) 
-		if (i in acct_desc) {
-			let val = ctx.user[i];
-			if (i=="user") val = toUnicode(val);
-			x += `<tr><td align=right>${acct_desc[i]}&nbsp;:&nbsp;</td><td>${val}</td></tr>`;
+
+	for(let i of acct_desc) if (i[0] in ctx.user) {
+		let val = ctx.user[i[0]];
+		if (i[0]=="mx") {
+			let mx = `10 ${val}.${policy("default_mail_domain")}.`;
+			val = `<table id="mx_table" border=0><tr><td>`;
+			val += `<a onClick="return copyToClip('${mx}','mx_table');" title="Copy MX records to clipboard" href=#>`;
+			val += `<font size=+1>${gbl.copy}</font></a></td>`;
+			val += `<td><pre>${mx}</pre></td></tr></table>`;
 			}
+		if (i[0]=="user") val = toUnicode(val);
+		x += `<tr><td align=right>${i[1]}&nbsp;:&nbsp;</td><td>${val}</td></tr>`;
+		}
 	return x+"</table>";
 }
 
+function is_user_active()
+{
+	if ((!ctx.user)||(!ctx.user.user)||(!ctx.user.domains)) return false;
+	return ((ctx.user.user in ctx.user.domains)&&(ctx.user.domains[ctx.user.user]));
+}
 
 function is_email_active(user,idx)
 {
-	let [prefix,dom] = user.identities[idx].split("@");
-
-	if ((gbl.config)
-		&&(gbl.config.policy)
-		&&(gbl.config.policy.default_mail_domain)
-		&&(gbl.config.policy.default_mail_domain==dom)
-		&&(user.domains)&&(user.domains[user.user])
-		) return true;
-
-	return ((dom in user.domains)&&(user.domains[dom]));
+	if (!ctx.user) return false;
+	let [prefix,dom] = ctx.user.identities[idx].split("@");
+	return ((dom in ctx.user.domains)&&(ctx.user.domains[dom]));
 }
 
+
+function email_as_unicode(email)
+{
+	let [pfx,dom] = email.split("@");
+	return toUnicode(pfx)+"@"+toUnicode(dom);
+}
 
 function domainDetails()
 {
@@ -715,7 +747,8 @@ function domainDetails()
 	x += settings_header("My Email Addresses",false);
 	x += "<table width=100%>"
 	x += "<colgroup><col/><col width=200px/></colgroup>"
-	for(let i in ctx.user.identities) x += `<tr><td>${ctx.user.identities[i]}</td><td>${is_email_active(ctx.user,i)?gbl.tick:gbl.cross}</td></tr>`;
+	x += `<tr><td>${ctx.user.user}@${toUnicode(policy("default_mail_domain"))}</td><td>${is_user_active()?gbl.tick:gbl.cross}</td></tr>`;
+	for(let i in ctx.user.identities) x += `<tr><td>${email_as_unicode(ctx.user.identities[i])}</td><td>${is_email_active(ctx.user,i)?gbl.tick:gbl.cross}</td></tr>`;
 	x += "</table></td></tr>";
 	return x+"</table>";
 }

@@ -5,8 +5,6 @@
 import datetime
 import idna
 
-from policy import this_policy as policy
-
 
 def now(offset=0):
     time_now = datetime.datetime.now()
@@ -14,18 +12,35 @@ def now(offset=0):
     return time_now.strftime("%Y-%m-%d %H:%M:%S")
 
 
-def puny_to_utf8(name, strict_idna_2008=None):
-    if strict_idna_2008 is None:
-        strict_idna_2008 = policy.get("strict_idna2008")
+def puny_to_utf8(name):
     try:
         idn = idna.decode(name)
         return idn
     except idna.IDNAError:
-        if strict_idna_2008:
-            return None
         try:
             idn = name.encode("utf-8").decode("idna")
             return idn
         except UnicodeError:
             return None
     return None
+
+
+def utf8_to_puny(utf8):
+    try:
+        puny = idna.encode(utf8)
+        return puny.decode("utf-8")
+    except idna.IDNAError:
+        try:
+            puny = utf8.encode("idna")
+            return puny.decode("utf-8")
+        except UnicodeError:
+            return None
+    return None
+
+
+if __name__ == "__main__":
+    for x in ["xn--belgi-rsa.be", "xn--9q8h.ss-test-1", "fred.com"]:
+        utf8 = puny_to_utf8(x)
+        print(x, "->", utf8)
+        puny = utf8_to_puny(utf8)
+        print(utf8, "->", puny)

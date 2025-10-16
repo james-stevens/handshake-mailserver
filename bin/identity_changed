@@ -1,3 +1,8 @@
 #! /bin/sh
 
-/usr/local/python/executor.py -t doms -v identity_changed -d "{ \"data\": \"$*\" }"
+idents="$1"
+acct="$2"
+
+/usr/local/python/executor.py -t doms \
+	-v identity_changed \
+	-d "{ \"identities\": \"${idents}\", \"user\":\"${acct}\" }"

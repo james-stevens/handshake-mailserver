@@ -5,6 +5,7 @@ daemon_directory = /usr/libexec/postfix
 data_directory = /opt/data/postfix/master
 mail_spool_directory = /opt/data/postfix/mailboxes
 transport_maps = lmdb:/opt/data/postfix/data/transport
+virtual_alias_maps = lmdb:/opt/data/postfix/data/virtual
 
 mail_owner = postfix
 mydomain = {{ policy.default_mail_domain }}

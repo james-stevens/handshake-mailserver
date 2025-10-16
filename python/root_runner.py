@@ -6,10 +6,13 @@ import os
 import time
 import json
 import argparse
+import subprocess
 
 import executor
 import log
 from policy import this_policy as policy
+
+POSTFIX_UNIX_ID = 151
 
 
 def get_gid(grp):
@@ -32,28 +35,40 @@ def make_home_dir(data):
     if "user" not in data or "uid" not in data:
         return False
     path = os.path.join(policy.BASE, "homedirs", data["user"])
-    os.mkdir(path)
+    if not os.path.isdir(path):
+        os.mkdir(path)
     os.chown(path, data["uid"], get_gid("users"))
     return True
 
 
 def install_mail_files(data):
-    # CODE - rename mail files & recreate their db files
-    # transport_maps = lmdb:/opt/data/postfix/data/transport
-    # virtual_alias_maps = hash:/etc/postfix/virtual
-    #     postmaster@virtual-alias.domain postmaster
-    pass
+    for file in ["transport", "virtual"]:
+        pfx = os.path.join(policy.BASE, "postfix", "data", file)
+        new = pfx + ".new"
+        if os.path.isfile(new):
+            os.chown(new, POSTFIX_UNIX_ID, POSTFIX_UNIX_ID)
+            os.replace(new, pfx)
+            subprocess.run(["postmap", pfx])
+            # subprocess.run(["postmap", pfx], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, check=True)
+            os.chown(pfx + ".lmdb", POSTFIX_UNIX_ID, POSTFIX_UNIX_ID)
+    return True
 
 
-def install_passwd_files(data):
+def install_unix_files(data):
     for file in ["passwd", "shadow", "group"]:
         src = f"/run/{file}.new"
         if os.path.isfile(src):
-            uid, gid, perm = PASSWD_FILE_PERMS[file]
+            [uid, gid, perm] = PASSWD_FILE_PERMS[file]
             os.chmod(src, perm)
             os.chown(src, uid, gid)
-            os.rename(src, f"/run/{file}")
-    executor.create_command("install_passwd_files", "doms", {"verb": "email_users_welcome"})
+            os.replace(src, f"/run/{file}")
+    executor.create_command("install_unix_files", "doms", {"verb": "email_users_welcome"})
+    return True
+
+
+def start_up_new_files(data):
+    install_mail_files(data)
+    install_unix_files(data)
     return True
 
 
@@ -64,8 +79,9 @@ def test_test(data):
 
 ROOT_CMDS = {
     "install_mail_files": install_mail_files,
+    "install_unix_files": install_unix_files,
+    "start_up_new_files": start_up_new_files,
     "make_home_dir": make_home_dir,
-    "install_passwd_files": install_passwd_files,
     "test": test_test
 }
 
@@ -92,7 +108,7 @@ def runner(with_debug, with_logging):
 
 
 def run_tests():
-    install_passwd_files(None)
+    install_unix_files(None)
     print(PASSWD_FILE_PERMS)
     print(get_gid("shadow"))
 

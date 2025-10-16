@@ -16,7 +16,18 @@ from policy import this_policy as policy
 
 IS_HOST = r'^(\*\.|)([\_a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
 IS_FQDN = r'^([a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
+IS_EMAIL = r'^[A-Za-z0-9\_\-\.]+$'
 IS_TLD = r'^[a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}[.]?$'
+
+
+def is_valid_email(email):
+    name, dom = email.rstrip(".").lower().split("@")
+    if not is_valid_fqdn(dom):
+        return False
+    tld = dom.split(".")[-1]
+    if tld in icann_tlds.ICANN_TLDS and not policy.get("allow_icann_domains"):
+        return False
+    return re.match(IS_EMAIL, name, re.IGNORECASE) is not None
 
 
 def check_mx_match(user, mx_rrs):
@@ -31,9 +42,21 @@ def check_mx_match(user, mx_rrs):
     return chk_rr == mx_rr
 
 
-def email_active(email, domains):
+def is_user_active(user_data):
+    if (user := user_data.get("user", None)) is None:
+        return False
+    if (doms := user_data.get("domains", None)) is None or not isinstance(doms, dict) or user not in doms:
+        return False
+    return doms[user]
+
+
+def is_email_active(user_data, email):
+    if not is_user_active(user_data):
+        return False
+    if (doms := user_data.get("domains", None)) is None:
+        return False
     split_mail = email.rstrip(".").lower().split("@")
-    return split_mail[1] in domains and domains[split_mail[1]]
+    return split_mail[1] in doms and doms[split_mail[1]]
 
 
 def has_idn(name):
@@ -57,7 +80,7 @@ def is_valid_tld(name):
     return re.match(IS_TLD, name, re.IGNORECASE) is not None
 
 
-def is_valid_fqdn(name, strict_idna_2008=None):
+def is_valid_fqdn(name):
     if name is None or not isinstance(name, str):
         return False
     if len(name) > 255 or len(name) <= 0:
@@ -66,7 +89,7 @@ def is_valid_fqdn(name, strict_idna_2008=None):
         return False
     if not has_idn(name):
         return True
-    return misc.puny_to_utf8(name, strict_idna_2008)
+    return misc.puny_to_utf8(name)
 
 
 def is_valid_host(name):

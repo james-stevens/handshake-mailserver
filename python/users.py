@@ -153,7 +153,7 @@ def register(sent_data, user_agent):
             "when_dt": now,
             "desc": "Account first registered"
         }],
-        "identities": [f"{user}@{policy.get('default_mail_domain')}"],
+        "identities": [],
         "domains": {
             user: False
         }

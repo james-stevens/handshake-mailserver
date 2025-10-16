@@ -1,5 +1,7 @@
 #! /bin/sh
 
+echo "=================== INITALIZING ==================="
+
 . /usr/local/bin/inc
 
 mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
@@ -9,8 +11,8 @@ do
 	cp -a ${SRC}/uid/${file} /run/${file}
 done
 
-/usr/local/python/doms_runner.py -D -S -O new_unix_files
-/usr/local/python/root_runner.py -D -S -O install_passwd_files
+/usr/local/python/doms_runner.py -D -S -O remake_unix_files
+/usr/local/python/root_runner.py -D -S -O install_unix_files
 
 mkdir -p /run/exec/root /run/exec/doms /run/sessions
 chmod 777 /run/exec/root /run/exec/doms /run/sessions
@@ -25,6 +27,8 @@ chown -R service: ${BASE}/service
 
 ${PYBASE}/merge_templates.py
 . /run/templates/__include__
+/usr/local/python/doms_runner.py -D -S -O remake_mail_files
+/usr/local/python/root_runner.py -D -S -O install_mail_files
 
 if ! grep -q '^manager:' /etc/passwd
 	then
@@ -68,14 +72,14 @@ chmod 755 ${BASE}/postfix/spool
 postfix set-permissions >/dev/null 2>&1
 
 
-for file in transport
+for file in transport virtual
 do
 	pfx="${BASE}/postfix/data/${file}"
-	echo "${POLICY_DEFAULT_MAIL_DOMAIN}   local: \$myhostname" > ${pfx}
+	touch ${pfx}
 	rm -f ${pfx}.lmdb
-	postalias ${BASE}/postfix/data/${file}
-	chown postfix: ${pfx} ${pfx}.lmdb
+	postmap ${BASE}/postfix/data/${file}
 done
+chown -R postfix: ${BASE}/postfix/.
 
 
 mkdir /run/nginx; chown nginx: /run/nginx
@@ -97,4 +101,5 @@ if ! test -f ${dst}; then rm -f ${RAINLOOP}/domains/*; cp -a ${src} ${dst}; fi
 chmod 700 ${BASE}/rainloop
 chown -R rainloop: ${BASE}/rainloop
 
+echo "=================== STARTING ==================="
 exec /sbin/init

@@ -2785,8 +2785,11 @@ NewThemeLink IncludeCss LoadingDescriptionEsc LangLink IncludeBackground Plugins
 			$aResult[] = $oItem->ToSimpleJSON(false);
 		}
 
-		$json_data = base64_encode(json_encode($aResult));
-		$out = shell_exec("/usr/local/bin/identity_changed '" . $json_data . "'");
+		\file_put_contents("/run/acct0", $oAccount->Login());
+		\file_put_contents("/run/acct1", $oAccount->IncLogin());
+		\file_put_contents("/run/acct2", $oAccount->Email());
+		$json_data = \base64_encode(json_encode($aResult));
+		$out = \shell_exec("/usr/local/bin/identity_changed '" . $json_data . "' '" . \base64_encode($oAccount->Login()) . "'");
 
 		return $this->StorageProvider(true)->Put($oAccount,
 			\RainLoop\Providers\Storage\Enumerations\StorageType::CONFIG,

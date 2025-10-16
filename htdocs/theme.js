@@ -194,6 +194,11 @@ h2 { text-align: center; }
 	text-align: center;
 	}
 
+table {
+	font-family:inherit;
+	font-size: 14px;
+	}
+
 html {
 	color: #${cols[16]};
 	font-family:Verdana,Arial,Helvetica,sans-serif;
