@@ -2,9 +2,9 @@
 # (c) Copyright 2019-2025, James Stevens ... see LICENSE for details
 # Alternative license arrangements possible, contact me for more information
 
-import os
-import jinja2
 import argparse
+import jinja2
+import os
 
 from policy import this_policy as policy
 
@@ -18,7 +18,7 @@ def main():
 
     merge_data = {"policy": policy.data()}
 
-    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(SRC_DIR))
+    environment = jinja2.Environment(loader=jinja2.FileSystemLoader(SRC_DIR), autoescape=True)
     for file in os.listdir(SRC_DIR):
         if os.path.isfile(os.path.join(SRC_DIR, file)):
             dst_path = os.path.join(DST_DIR, file)

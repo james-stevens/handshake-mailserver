@@ -5,11 +5,10 @@
 
 import flask
 
-import log
+from log import this_log as log
 import users
+import misc
 from policy import this_policy as policy
-
-WANT_REFERRER_CHECK = True
 
 HTML_CODE_ERR = 299
 HTML_CODE_OK = 200
@@ -90,6 +89,9 @@ class WebuiReq:
 
 @application.before_request
 def before_request():
+    if misc.debug_mode():
+        return None
+
     strict_referrer = policy.get("strict_referrer")
     if strict_referrer is not None and not strict_referrer:
         return None
@@ -194,10 +196,20 @@ def users_logout():
     return req.response("logged-out")
 
 
+@application.route('/wmapi/users/close', methods=['GET'])
+def users_close():
+    # CODE - close account
+    pass
+
+
+@application.route('/wmapi/password/reset', methods=['GET'])
+def password_reset():
+    # CODE - reset / recover password
+    pass
+
+
 def main():
-    global WANT_REFERRER_CHECK
     log.init(with_debug=True)
-    WANT_REFERRER_CHECK = False
     application.run()
 
 

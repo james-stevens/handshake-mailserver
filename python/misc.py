@@ -4,6 +4,7 @@
 
 import datetime
 import idna
+import os
 
 
 def now(offset=0):
@@ -36,6 +37,10 @@ def utf8_to_puny(utf8):
         except UnicodeError:
             return None
     return None
+
+
+def debug_mode():
+    return os.environ.get("DEBUG_MODE", "N") == "Y"
 
 
 if __name__ == "__main__":

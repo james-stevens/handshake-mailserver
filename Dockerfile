@@ -23,7 +23,7 @@ RUN newaliases
 RUN ln -fns /run/templates/main.cf /etc/postfix/main.cf
 RUN chown root:postfix /etc/postfix/
 RUN chmod 750 /etc/postfix/
-RUN ln -fns /opt/data/postfix/mailboxes /var/spool/mail
+RUN ln -fns /opt/data/mailboxes /var/spool/mail
 
 RUN apk add stunnel busybox-extras cyrus-sasl imap 
 RUN apk add ldns-tools openssl

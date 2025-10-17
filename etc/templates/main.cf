@@ -3,7 +3,7 @@ queue_directory = /opt/data/postfix/spool
 command_directory = /usr/sbin
 daemon_directory = /usr/libexec/postfix
 data_directory = /opt/data/postfix/master
-mail_spool_directory = /opt/data/postfix/mailboxes
+mail_spool_directory = /opt/data/mailboxes
 transport_maps = lmdb:/opt/data/postfix/data/transport
 virtual_alias_maps = lmdb:/opt/data/postfix/data/virtual
 

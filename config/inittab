@@ -6,6 +6,6 @@
 ::respawn:/usr/sbin/saslauthd -a sasldb -c -d >/dev/null 2>&1
 ::respawn:/usr/sbin/php-fpm84 > /run/php-fpm84.log 2>&1
 ::respawn:/usr/sbin/nginx -g "daemon off;" >/dev/null 2>&1
-::respawn:/usr/local/python/root_runner.py -D -S
-::respawn:/usr/local/python/doms_runner.py -D -S
+::respawn:/usr/local/python/root_runner.py -S
+::respawn:/usr/local/python/doms_runner.py -S
 ::respawn:/usr/local/bin/start_wsgi_webui

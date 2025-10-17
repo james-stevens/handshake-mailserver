@@ -4,31 +4,36 @@ echo "=================== INITALIZING ==================="
 
 . /usr/local/bin/inc
 
-mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs
+mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs ${BASE}/mailboxes
+chmod 755 ${BASE}/homedirs ${BASE}/mailboxes ${BASE}/rainloop
 
 for file in group passwd shadow
 do
 	cp -a ${SRC}/uid/${file} /run/${file}
 done
 
-/usr/local/python/doms_runner.py -D -S -O remake_unix_files
-/usr/local/python/root_runner.py -D -S -O install_unix_files
+if ! test -d ${BASE}/service
+	then
+		cp -a /usr/local/etc/service ${BASE}/service
+	fi
+if ! test -f ${BASE}/service/used_domains.json
+	then
+		echo "{}" > ${BASE}/service/used_domains.json
+	fi
+chown -R 850: ${BASE}/service
+
+/usr/local/python/doms_runner.py -O remake_unix_files
+/usr/local/python/root_runner.py -O install_unix_files
 
 mkdir -p /run/exec/root /run/exec/doms /run/sessions
 chmod 777 /run/exec/root /run/exec/doms /run/sessions
 chown service: /run/exec/doms
 
-if ! test -d ${BASE}/service
-	then
-		cp -a /usr/local/etc/service ${BASE}/service
-	fi
-chown -R service: ${BASE}/service
-
 
 ${PYBASE}/merge_templates.py
 . /run/templates/__include__
-/usr/local/python/doms_runner.py -D -S -O remake_mail_files
-/usr/local/python/root_runner.py -D -S -O install_mail_files
+/usr/local/python/doms_runner.py -O remake_mail_files
+/usr/local/python/root_runner.py -O install_mail_files
 
 if ! grep -q '^manager:' /etc/passwd
 	then
@@ -62,7 +67,7 @@ if ! test -f /etc/sasl2/smtpd.conf
 		} > /etc/sasl2/smtpd.conf
 	fi
 
-for dir in spool master data mailboxes
+for dir in spool master data
 do
 	mkdir -p ${BASE}/postfix/${dir}
 	chown postfix:mail ${BASE}/postfix/${dir}

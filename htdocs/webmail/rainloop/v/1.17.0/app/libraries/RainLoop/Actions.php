@@ -2215,6 +2215,8 @@ NewThemeLink IncludeCss LoadingDescriptionEsc LangLink IncludeBackground Plugins
 		{
 			$this->Logger()->Write('The email address "'.$sEmail.'" is not complete', \MailSo\Log\Enumerations\Type::INFO, 'LOGIN');
 
+			$sEmail = \MailSo\Base\Utils::IdnToAscii($sEmail);
+
 			if (false === \strpos($sEmail, '@') && !!$this->Config()->Get('login', 'determine_user_domain', false))
 			{
 				$sUserHost = \trim($this->Http()->GetHost(false, true, true));

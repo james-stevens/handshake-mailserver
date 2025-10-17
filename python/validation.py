@@ -9,15 +9,18 @@ import sys
 
 import misc
 import resolv
-import filecfg
+import usercfg
+import fileloader
 import icann_tlds
-#import log
+# from log import this_log as log
 from policy import this_policy as policy
 
 IS_HOST = r'^(\*\.|)([\_a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
 IS_FQDN = r'^([a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}\.)+[a-z0-9]([-a-z0-9]{0,61}[a-z0-9]){0,1}[.]?$'
 IS_EMAIL = r'^[A-Za-z0-9\_\-\.]+$'
 IS_TLD = r'^[a-z0-9]([-a-z-0-9]{0,61}[a-z0-9]){0,1}[.]?$'
+
+used_domains = fileloader.FileLoader(policy.DOMAINS_FILE)
 
 
 def is_valid_email(email):
@@ -51,12 +54,14 @@ def is_user_active(user_data):
 
 
 def is_email_active(user_data, email):
-    if not is_user_active(user_data):
-        return False
     if (doms := user_data.get("domains", None)) is None:
         return False
     split_mail = email.rstrip(".").lower().split("@")
     return split_mail[1] in doms and doms[split_mail[1]]
+
+
+def is_email_user_active(user_data, email):
+    return is_user_active(user_data) and is_email_active(user_data, email)
 
 
 def has_idn(name):
@@ -147,16 +152,16 @@ def pre_check_user(user, is_new):
     if tld in icann_tlds.ICANN_TLDS and not policy.get("allow_icann_domains"):
         return False, "ICANN domains are not allowed"
 
-    file, __ = filecfg.user_file_name(user, True)
-    has_file = os.path.isfile(file)
+    file, __ = usercfg.user_file_name(user, True)
+    already_in_use = (user in used_domains.data()) or (os.path.isfile(file))
 
-    if is_new and has_file:
+    if is_new and already_in_use:
         return False, "Domain is already registered"
 
-    if (not is_new) and (not has_file):
+    if (not is_new) and (not already_in_use):
         return False, "Invalid login"
 
-    return True, tld
+    return True, None
 
 
 def web_valid_reg_account(user):

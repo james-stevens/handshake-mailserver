@@ -28,6 +28,7 @@ DEFAULT_POLICY_VALUES = {
 
 BASE = os.environ.get("BASE", "/opt/data")
 POLICY_FILE = os.path.join(BASE, "service", "policy.json")
+DOMAINS_FILE = os.path.join(BASE, "service", "used_domains.json")
 
 
 class Policy:
@@ -35,6 +36,7 @@ class Policy:
     def __init__(self):
         self.BASE = BASE
         self.POLICY_FILE = POLICY_FILE
+        self.DOMAINS_FILE = DOMAINS_FILE
         if not os.path.isfile(POLICY_FILE):
             with open(POLICY_FILE, "w+") as fd:
                 json.dump(DEFAULT_POLICY_VALUES, fd, indent=2)

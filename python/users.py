@@ -15,9 +15,9 @@ import validators
 from policy import this_policy as policy
 import executor
 import validation
-import filecfg
+import usercfg
 import misc
-# import log
+# from log import this_log as log
 
 USER_FILE = policy.BASE + "/service/users.json"
 SESSIONS_DIR = "/run/sessions"
@@ -63,14 +63,14 @@ def login(sent_data, user_agent):
     if sent_data.get("user", None) is None or sent_data.get("password", None) is None:
         return False, "Insufficient data"
 
-    ok, user_data = user_info_load(sent_data["user"])
+    ok, user_data = usercfg.user_info_load(sent_data["user"])
     if not ok or user_data is None or "password" not in user_data:
         return False, f"User '{sent_data['user']}' not found or missing password"
 
     if not compare_passwords(sent_data["password"], user_data["password"]):
         return False, "Password does no match"
 
-    user_info_update(sent_data["user"], {"last_login_dt": misc.now()})
+    usercfg.user_info_update(sent_data["user"], {"last_login_dt": misc.now()})
     return create_session_file(sent_data["user"], user_data, user_agent)
 
 
@@ -92,7 +92,7 @@ def check_session(session_code, user_agent):
         os.remove(file)
         return False, "Session file missing data or user-agent mismatch"
 
-    ok, user_data = user_info_load(js["user"])
+    ok, user_data = usercfg.user_info_load(js["user"])
     if not ok or user_data is None:
         return False, "User in session file doesn't exist"
 
@@ -102,16 +102,8 @@ def check_session(session_code, user_agent):
     return True, user_data
 
 
-def user_info_load(user):
-    return filecfg.record_info_load("users", user)
-
-
-def user_info_update(user, data):
-    return filecfg.record_info_update("users", user, data)
-
-
 def check_password(user, sent_data):
-    ok, user_data = user_info_load(user)
+    ok, user_data = usercfg.user_info_load(user)
     return compare_passwords(sent_data["password"], user_data["password"])
 
 
@@ -159,7 +151,7 @@ def register(sent_data, user_agent):
         }
     }
 
-    file, __ = filecfg.user_file_name(user, True)
+    file, __ = usercfg.user_file_name(user, True)
     with open(file, "w+") as fd:
         json.dump(user_data, fd, indent=2)
 
@@ -167,8 +159,13 @@ def register(sent_data, user_agent):
     return create_session_file(user, user_data, user_agent)
 
 
+def password_new(password):
+    # CODE - change password
+    pass
+
+
 if __name__ == "__main__":
-    print("INFO LOAD ->", user_info_load("lord.webmail"))
+    print("INFO LOAD ->", usercfg.user_info_load("lord.webmail"))
 
 
 def debug_stuff():
@@ -181,11 +178,11 @@ def debug_stuff():
             "confirm": "yes"
         }, "my-agent"))
     print("--->>>", USER_FILE)
-    # print(user_info_load("james"))
-    # print(user_info_update("james", {"user": "james", "password": "fred"}))
-    # print(user_info_load("james"))
-    # print(user_info_update("james", None))
-    # print(user_info_load("james"))
+    # print(usercfg.user_info_load("james"))
+    # print(usercfg.user_info_update("james", {"user": "james", "password": "fred"}))
+    # print(usercfg.user_info_load("james"))
+    # print(usercfg.user_info_update("james", None))
+    # print(usercfg.user_info_load("james"))
     # print(password_compare("yes","lord.webmail"))
     # print(check_session("abc123","fred"))
 
@@ -195,9 +192,9 @@ def debug_stuff():
         print("CHECK_SESSION ->", check_session(uid["session"], "my-agent"))
 
     print("")
-    print("INFO LOAD ->", user_info_load("lord.webmail"))
-    print("INFO ADD ->", user_info_update("lord.webmail", {"temp": "value"}))
-    print("INFO LOAD ->", user_info_load("lord.webmail"))
-    print("INFO ADD ->", user_info_update("lord.webmail", {"temp": None}))
-    print("INFO LOAD ->", user_info_load("lord.webmail"))
+    print("INFO LOAD ->", usercfg.user_info_load("lord.webmail"))
+    print("INFO ADD ->", usercfg.user_info_update("lord.webmail", {"temp": "value"}))
+    print("INFO LOAD ->", usercfg.user_info_load("lord.webmail"))
+    print("INFO ADD ->", usercfg.user_info_update("lord.webmail", {"temp": None}))
+    print("INFO LOAD ->", usercfg.user_info_load("lord.webmail"))
     # print(make_session_code("james"))

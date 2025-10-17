@@ -10,10 +10,10 @@ import base64
 
 from policy import this_policy as policy
 import executor
-import filecfg
+import usercfg
 import resolv
 import validation
-import log
+from log import this_log as log
 import misc
 
 BASE_UX_DIR = "/usr/local/etc/uid"
@@ -64,6 +64,7 @@ class UserData:
             if "uid" not in this_user:
                 self.assign_uid(this_user)
 
+    def finish_start_uo(self):
         self.run_mx_check(None)
         self.check_remake_files()
 
@@ -75,7 +76,7 @@ class UserData:
         this_user["uid"] = this_uid
         self.taken_uids[this_uid] = True
         self.active_users.append(user)
-        filecfg.record_info_update("users", user, {"uid": this_uid})
+        usercfg.user_info_update("users", user, {"uid": this_uid})
         executor.create_command("doms_runner_user_add", "root", {
             "verb": "make_home_dir",
             "data": {
@@ -88,7 +89,8 @@ class UserData:
 
     def load_users(self):
         get_user_files = subprocess.run(
-            ["find", os.path.join(policy.BASE, "service", "users"), "-type", "f", "-name", "*.json"],
+            ["/bin/busybox", "find",
+             os.path.join(policy.BASE, "service", "users"), "-type", "f", "-name", "*.json"],
             capture_output=True)
         self.all_users = {}
         for file in get_user_files.stdout.decode('utf-8').strip().split():
@@ -125,6 +127,8 @@ class UserData:
 
         for file in ["passwd", "shadow", "group"]:
             os.replace(f"/run/{file}.tmp", f"/run/{file}.new")
+
+        return True
 
     def find_free_uid(self):
         for x in range(1000, 30000):
@@ -168,9 +172,20 @@ class UserData:
                 for email in [e for e in user_data["identities"] if validation.is_email_active(user_data, e)]:
                     fd.write(f"{email} {user}\n")
 
+        with open(policy.DOMAINS_FILE + ".tmp", "w") as fd:
+            json.dump(
+                {
+                    dom: True
+                    for user in Users.active_users
+                    for dom in Users.all_users[user].get("domains", {}) if Users.all_users[user]["domains"][dom]
+                }, fd)
+        os.replace(policy.DOMAINS_FILE + ".tmp", policy.DOMAINS_FILE)
+
         for file in ["transport", "virtual"]:
             pfx = os.path.join(policy.BASE, "postfix", "data", file)
             os.replace(pfx + ".tmp", pfx + ".new")
+
+        return True
 
     def check_remake_files(self):
         log.debug(
@@ -197,7 +212,7 @@ class UserData:
 
         if save_this_user:
             log.debug(f"saving user '{this_user['user']}'")
-            filecfg.record_info_update("users", this_user["user"], {
+            usercfg.user_info_update("users", this_user["user"], {
                 "domains": this_user["domains"],
                 "events": this_user["events"]
             })
@@ -255,6 +270,7 @@ class UserData:
 
         for dom in email_doms:
             if dom not in this_user["domains"]:
+                # CODE - email users to say we saw their new domain
                 this_user["domains"][dom] = False
 
         this_user["identities"].sort()
@@ -264,7 +280,7 @@ class UserData:
 
         self.need_remake_mail_files = True
         this_user["events"].append({"when_dt": misc.now(), "desc": "Email Identities updated"})
-        filecfg.record_info_update("users", this_user["user"], {
+        usercfg.user_info_update("users", this_user["user"], {
             "events": this_user["events"],
             "identities": this_user["identities"],
             "domains": this_user["domains"]
@@ -276,7 +292,7 @@ class UserData:
     def new_user_added(self, data):
         if (user := data.get("user", None)) is None:
             return False
-        if (this_user := filecfg.record_info_load("users", user)) is None:
+        if (this_user := usercfg.user_info_load("users", user)) is None:
             return False
         this_user["user"] = user
         self.all_users[user] = this_user
@@ -291,13 +307,14 @@ class UserData:
         self.need_remake_mail_files = self.need_remake_system_files = False
         if DOMS_CMDS[verb](data):
             self.check_remake_files()
+            return True
         else:
             log.log(f"ERROR: cmd '{verb}' failed")
-            time.sleep(5)
+            return False
 
 
 def test_test(data):
-    log.log(f"TEST DOMS: {data}")
+    log.log(f"TEST DOMS: {data}, Users: {len(Users.all_users)}, Active: {len(Users.active_users)}")
     return True
 
 
@@ -316,9 +333,12 @@ DOMS_CMDS = {
 }
 
 
-def runner(with_debug, with_logging):
-    log.init("DOMS backend", with_debug=with_debug, with_logging=with_logging)
+def runner(to_syslog):
+    log.init("DOMS backend", with_debug=misc.debug_mode(), to_syslog=to_syslog)
+
+    Users.finish_start_uo()
     log.log("DOMS backend running")
+
     while True:
         if (file := executor.find_oldest_cmd("doms")) is None:
             time.sleep(1)
@@ -331,20 +351,26 @@ def runner(with_debug, with_logging):
             elif cmd_data["verb"] not in DOMS_CMDS:
                 log.log(f"ERROR: Verb '{cmd_data['verb']}' is not supported")
             else:
-                Users.dispatch_job(cmd_data["verb"], cmd_data.get("data", None))
+                if not Users.dispatch_job(cmd_data["verb"], cmd_data.get("data", None)):
+                    time.sleep(5)
 
 
 def run_tests():
     Users.startup()
-    for user in Users.all_users:
-        user_data = Users.all_users[user]
-        for email in user_data["identities"]:
-            print(user_data["uid"], user, email, validation.is_email_active(user_data, email))
+    print({
+        dom: Users.all_users[user]["domains"][dom]
+        for user in Users.active_users
+        for dom in Users.all_users[user].get("domains", {})
+    })
+    print({
+        dom: True
+        for user in Users.active_users
+        for dom in Users.all_users[user].get("domains", {}) if Users.all_users[user]["domains"][dom]
+    })
 
 
 def main():
     parser = argparse.ArgumentParser(description='DOMS Jobs Runner')
-    parser.add_argument("-D", "--debug", default=False, help="Debug mode", action="store_true")
     parser.add_argument("-S", "--syslog", default=False, help="With syslog", action="store_true")
     parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
     parser.add_argument("-O", "--one", help="Run one module")
@@ -352,20 +378,19 @@ def main():
     args = parser.parse_args()
 
     Users.startup()
-
     if args.one:
-        log.init("DOMS run one", with_debug=True, with_logging=args.syslog)
+        log.init("DOMS run one", with_debug=misc.debug_mode(), to_syslog=args.syslog)
         if args.one not in DOMS_CMDS:
             log.log("ERROR: DOMS CMD '{args.one}' not valid")
             return
         Users.dispatch_job(args.one, json.loads(args.data) if args.data else None)
 
     elif args.test:
-        log.init("DOMS run test", with_debug=True, with_logging=args.syslog)
+        log.init("DOMS run test", with_debug=True, to_syslog=args.syslog)
         run_tests()
 
     else:
-        runner(args.debug, args.syslog)
+        runner(args.syslog)
 
 
 if __name__ == "__main__":

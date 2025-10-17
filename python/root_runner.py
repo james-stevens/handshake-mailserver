@@ -9,7 +9,8 @@ import argparse
 import subprocess
 
 import executor
-import log
+import misc
+from log import this_log as log
 from policy import this_policy as policy
 
 POSTFIX_UNIX_ID = 151
@@ -48,7 +49,7 @@ def install_mail_files(data):
         if os.path.isfile(new):
             os.chown(new, POSTFIX_UNIX_ID, POSTFIX_UNIX_ID)
             os.replace(new, pfx)
-            subprocess.run(["postmap", pfx])
+            subprocess.run(["/usr/sbin/postmap", pfx])
             # subprocess.run(["postmap", pfx], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL, check=True)
             os.chown(pfx + ".lmdb", POSTFIX_UNIX_ID, POSTFIX_UNIX_ID)
     return True
@@ -86,8 +87,8 @@ ROOT_CMDS = {
 }
 
 
-def runner(with_debug, with_logging):
-    log.init("ROOT backend", with_debug=with_debug, with_logging=with_logging)
+def runner(to_syslog):
+    log.init("ROOT backend", with_debug=misc.debug_mode(), to_syslog=to_syslog)
     log.log("ROOT backend running")
     while True:
         if (file := executor.find_oldest_cmd("root")) is None:
@@ -115,24 +116,23 @@ def run_tests():
 
 def main():
     parser = argparse.ArgumentParser(description='ROOT Jobs Runner')
-    parser.add_argument("-D", "--debug", default=False, help="Debug mode", action="store_true")
     parser.add_argument("-S", "--syslog", default=False, help="Log to syslog", action="store_true")
     parser.add_argument("-T", "--test", default=False, help="Run tests", action="store_true")
     parser.add_argument("-O", "--one", help="Run one module")
     parser.add_argument("-d", "--data", help="data for running one")
     args = parser.parse_args()
     if args.one:
-        log.init("ROOT run one", with_debug=True, with_logging=args.syslog)
+        log.init("ROOT run one", with_debug=misc.debug_mode(), to_syslog=args.syslog)
         if args.one not in ROOT_CMDS:
             log.log("ERROR: ROOT CMD '{args.one}' not valid")
             return
         ROOT_CMDS[args.one](json.loads(args.data) if args.data else None)
 
     elif args.test:
-        log.init("ROOT run test", with_debug=True, with_logging=args.syslog)
+        log.init("ROOT run test", with_debug=True, to_syslog=args.syslog)
         run_tests()
     else:
-        runner(args.debug, args.syslog)
+        runner(args.syslog)
 
 
 if __name__ == "__main__":

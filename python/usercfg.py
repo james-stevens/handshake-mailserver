@@ -34,45 +34,38 @@ def user_file_name(user, with_make_dir=False):
     return os.path.join(path, user + ".json"), os.path.join(path, ".lock")
 
 
-def get_file_name(file, record):
-    if file == "users":
-        return user_file_name(record)
-    else:
-        return os.path.join(CFG_DIR, file + ".json"), os.path.join(LCK_DIR, file + ".lock")
-
-
-def return_record(file, js, record):
-    if record not in js:
+def return_user(js, user):
+    if user not in js:
         return None
-    ret_record = js[record]
-    ret_record[file.rstrip("s")] = record
-    return ret_record
+    ret_user = js[user]
+    ret_user["user"] = user
+    return ret_user
 
 
-def record_info_load(file, record):
-    record_file, lock_file = get_file_name(file, record)
-    if not os.path.isfile(record_file):
+def user_info_load(user):
+    user_file, __ = user_file_name(user)
+    if not os.path.isfile(user_file):
         return None, "File not found"
 
-    with filelock.FileLock(lock_file), open(record_file, "r") as fd:
+    with open(user_file, "r") as fd:
         js = json.load(fd)
 
-    js[file.rstrip("s")] = record
+    js["user"] = user
     return True, js
 
 
-def record_info_update(file, record, data):
-    record_file, lock_file = get_file_name(file, record)
-    if not os.path.isfile(record_file):
+def user_info_update(user, data):
+    user_file, lock_file = user_file_name(user)
+    if not os.path.isfile(user_file):
         return None
 
-    if data is None and os.path.isfile(record_file):
-        os.remove(record_file)
+    if data is None and os.path.isfile(user_file):
+        os.remove(user_file)
         return True, None
 
     with filelock.FileLock(lock_file):
 
-        with open(record_file, "r") as fd:
+        with open(user_file, "r") as fd:
             js = json.load(fd)
 
             for item in data:
@@ -83,17 +76,19 @@ def record_info_update(file, record, data):
                     js[item] = data[item]
 
         js["amended_dt"] = misc.now()
-        with open(record_file, "w") as fd:
+        new_file = user_file + ".new"
+        with open(new_file, "w") as fd:
             json.dump(js, fd, indent=2)
+        os.replace(new_file, user_file)
 
-        js[file.rstrip("s")] = record
+        js["user"] = user
         return True, js
 
 
 if __name__ == "__main__":
-    print("INFO LOAD ->", record_info_load("users", "lord.webmail"))
-    print("INFO ADD ->", record_info_update("users", "lord.webmail", {"temp": "value"}))
-    print("INFO LOAD ->", record_info_load("users", "lord.webmail"))
-    print("INFO ADD ->", record_info_update("users", "lord.webmail", {"temp": None}))
-    print("INFO LOAD ->", record_info_load("users", "lord.webmail"))
-    print("INFO LOAD ->", record_info_load("users", "lord.webmail"))
+    print("INFO LOAD ->", user_info_load("users", "anon.webmail"))
+    print("INFO ADD ->", user_info_update("users", "anon.webmail", {"temp": "value"}))
+    print("INFO LOAD ->", user_info_load("users", "anon.webmail"))
+    print("INFO ADD ->", user_info_update("users", "anon.webmail", {"temp": None}))
+    print("INFO LOAD ->", user_info_load("users", "anon.webmail"))
+    print("INFO LOAD ->", user_info_load("users", "anon.webmail"))

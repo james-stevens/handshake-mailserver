@@ -10,11 +10,6 @@ import datetime
 
 from policy import this_policy as policy
 
-DONE_INIT = False
-
-HOLD_WITH_DEBUG = False
-HOLD_WITH_LOGGING = True
-
 facility_options = {
     "kern": syslog.LOG_KERN,
     "kernel": syslog.LOG_KERN,
@@ -54,69 +49,71 @@ severity_options = {
 }
 
 
-def debug(line):
-    where = inspect.stack()[1]
-    if HOLD_WITH_DEBUG:
-        log(f"[DEUBG] {line}", syslog.LOG_DEBUG, where=where)
+class Log:
+    def __init__(self):
+        self.done_init = False
+        self.with_debug = False
+        self.to_syslog = True
+
+    def debug(self, line):
+        if self.with_debug:
+            where = inspect.stack()[1]
+            self.log(f"[DEUBG] {line}", syslog.LOG_DEBUG, where=where)
+
+    def log(self, line, default_level=syslog.LOG_NOTICE, where=None):
+        if where is None:
+            where = inspect.stack()[1]
+        txt = ""
+        if where is not None:
+            fname = where.filename.split("/")[-1].split(".")[0]
+            txt = f"[{fname}:{str(where.lineno)}/{where.function}]"
+
+        if self.to_syslog:
+            if not self.done_init:
+                self.init()
+            if isinstance(default_level, str):
+                default_level = severity_options[default_level]
+            syslog.syslog(default_level, f"{txt} {line}")
+        else:
+            now = datetime.datetime.now()
+            now_txt = now.strftime("%Y-%m-%d %H:%M:%S")
+            print(f"{now_txt} SYSLOG{txt} {line}")
+
+    def check_off(self, this_facility, also_check_none=False):
+        if this_facility in ["None", "Off"] or (also_check_none and this_facility is None):
+            self.to_syslog = False
+            self.done_init = True
+            return True
+        return False
+
+    def init(self, inp_facility=None, with_debug=False, to_syslog=True):
+        if self.check_off(inp_facility):
+            return
+
+        if inp_facility in facility_options:
+            this_facility = facility_options[inp_facility]
+        else:
+            if (this_facility := policy.get(inp_facility)) is None:
+                this_facility = policy.get("logging_default")
+
+        if self.check_off(this_facility, True):
+            return
+
+        if this_facility in facility_options:
+            this_facility = facility_options[this_facility]
+
+        syslog.openlog(logoption=syslog.LOG_PID, facility=this_facility)
+        self.to_syslog = to_syslog
+        self.with_debug = with_debug
+        self.done_init = True
 
 
-def log(line, default_level=syslog.LOG_NOTICE, where=None):
-    if where is None:
-        where = inspect.stack()[1]
-    txt = ""
-    if where is not None:
-        fname = where.filename.split("/")[-1].split(".")[0]
-        txt = f"[{fname}:{str(where.lineno)}/{where.function}]"
-
-    if not HOLD_WITH_LOGGING:
-        now = datetime.datetime.now()
-        now_txt = now.strftime("%Y-%m-%d %H:%M:%S")
-        print(f"{now_txt} SYSLOG{txt} {line}")
-
-    if not DONE_INIT:
-        init()
-    if HOLD_WITH_LOGGING:
-        if isinstance(default_level, str):
-            default_level = severity_options[default_level]
-        syslog.syslog(default_level, f"{txt} {line}")
-
-
-def check_off(this_facility, also_check_none=False):
-    global HOLD_WITH_LOGGING
-    global DONE_INIT
-    if this_facility in ["None", "Off"] or (also_check_none and this_facility is None):
-        HOLD_WITH_LOGGING = False
-        DONE_INIT = True
-        return True
-    return False
-
-
-def init(inp_facility=None, with_debug=False, with_logging=True):
-    global HOLD_WITH_DEBUG
-    global HOLD_WITH_LOGGING
-    global DONE_INIT
-
-    if check_off(inp_facility):
-        return
-
-    if inp_facility in facility_options:
-        this_facility = facility_options[inp_facility]
-    else:
-        if (this_facility := policy.get(inp_facility)) is None:
-            this_facility = policy.get("logging_default")
-
-    if check_off(this_facility, True):
-        return
-
-    if this_facility in facility_options:
-        this_facility = facility_options[this_facility]
-
-    syslog.openlog(logoption=syslog.LOG_PID, facility=this_facility)
-    HOLD_WITH_LOGGING = with_logging
-    HOLD_WITH_DEBUG = with_debug
-    DONE_INIT = True
-
+this_log = Log()
 
 if __name__ == "__main__":
-    init(sys.argv[1], with_debug=True)
-    debug("Hello")
+    this_log.init(sys.argv[0], with_debug=True, to_syslog=False)
+    this_log.log("Hello 1")
+    this_log.debug("Hello 2")
+    this_log.to_syslog = True
+    this_log.log("Sys Hello 1")
+    this_log.debug("Sys Hello 2")

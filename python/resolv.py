@@ -16,7 +16,7 @@ import dns.rdatatype
 import validators
 
 import validation
-import log
+from log import this_log as log
 
 DNS_MAX_RESP = 4096
 MAX_TRIES = 10

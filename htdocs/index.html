@@ -192,6 +192,11 @@ function do_size_one_space()
     document.body.style.height = sz;
 }
 
+function activate_account_instructions()
+{
+	return "Account not active yet"
+}
+
 
 function loggedIn()
 {
@@ -201,6 +206,12 @@ function loggedIn()
 	e.style.display = "block";
 	if (elm.userSpace.style.display == "block") go_welcome_page(true);
 	user_info();
+	show_one_space("userSpace");
+
+	if (is_user_active())
+		myStuff(true,"myDomains");
+	else
+		elm.userSpace.innerHTML = activate_account_instructions();
 }
 
 
@@ -987,7 +998,7 @@ function make_theme_popup()
 <div style="height: 100px;">&nbsp;</div>
 
 <div id="allBottom">
-	<span class="botSpace" id="default" style="display: none;">Hello</span>
+	<span class="botSpace" id="default" style="display: none;">General welcome message & instructions</span>
 	<span class="botSpace" id="userSpace" style="display: none;"></span>
 </div>
 
