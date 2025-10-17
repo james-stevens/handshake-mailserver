@@ -5,13 +5,13 @@
 
 if test "${SYSLOG_SERVER}"
 	then
-		exec /sbin/syslogd -n -R ${SYSLOG_SERVER}
+		exec /bin/busybox syslogd -n -R ${SYSLOG_SERVER}
 	fi
 
-if test "${SYSLOG_STDOUT}" = "Y"
+if test "${DEBUG_MODE}" = "Y" -o "${SYSLOG_STDOUT}" = "Y"
 	then
-		exec /sbin/syslogd -n -O -
+		exec /sbin/syslogd -f /usr/local/etc/syslog_debug.conf -r -n
 	fi
 
 mkdir -p /opt/data/logs
-exec /sbin/syslogd -n -O /opt/data/logs/messages -b 9 -s 100000
+exec /sbin/syslogd -f /usr/local/etc/syslog.conf -r -n

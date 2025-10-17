@@ -30,7 +30,8 @@ RUN apk add ldns-tools openssl
 RUN apk add python3 py3-jinja2 py3-passlib py3-flask py3-filelock
 RUN apk add py3-validators py3-idna py3-gunicorn py3-dnspython
 RUN apk add php84-fpm php84-curl php84-iconv php84-dom
-RUN apk add jq
+RUN apk add jq sysklogd logrotate
+
 
 COPY etc /usr/local/etc/
 RUN mkdir -p /usr/local/etc/uid
@@ -59,6 +60,8 @@ COPY config/php.ini /etc/php84/php.ini
 COPY cron/every_hour /etc/periodic/hourly/
 COPY cron/every_day /etc/periodic/daily/
 COPY cron/every_15min /etc/periodic/15min/
+RUN rm /etc/logrotate.d/* /etc/periodic/daily/sysklogd
+COPY config/logrotate.conf /etc/logrotate.conf
 
 COPY bin /usr/local/bin/
 COPY htdocs /usr/local/htdocs/

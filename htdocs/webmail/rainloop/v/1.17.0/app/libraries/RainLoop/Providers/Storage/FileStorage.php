@@ -141,7 +141,9 @@ class FileStorage implements \RainLoop\Providers\Storage\IStorage
 			$sEmail = $mAccount->ParentEmailHelper();
 			if ($this->bLocal && $mAccount->IsAdditionalAccount() && !$bForDeleteAction)
 			{
-				$sSubEmail = $mAccount->Email();
+				/* $sSubEmail = $mAccount->Email(); <- old code */
+				$sEmail = $mAccount->Email();
+				$sSubEmail = '';
 			}
 		}
 

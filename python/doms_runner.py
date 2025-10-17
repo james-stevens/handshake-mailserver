@@ -76,7 +76,7 @@ class UserData:
         this_user["uid"] = this_uid
         self.taken_uids[this_uid] = True
         self.active_users.append(user)
-        usercfg.user_info_update("users", user, {"uid": this_uid})
+        usercfg.user_info_update(user, {"uid": this_uid})
         executor.create_command("doms_runner_user_add", "root", {
             "verb": "make_home_dir",
             "data": {
@@ -212,7 +212,7 @@ class UserData:
 
         if save_this_user:
             log.debug(f"saving user '{this_user['user']}'")
-            usercfg.user_info_update("users", this_user["user"], {
+            usercfg.user_info_update(this_user["user"], {
                 "domains": this_user["domains"],
                 "events": this_user["events"]
             })
@@ -280,7 +280,7 @@ class UserData:
 
         self.need_remake_mail_files = True
         this_user["events"].append({"when_dt": misc.now(), "desc": "Email Identities updated"})
-        usercfg.user_info_update("users", this_user["user"], {
+        usercfg.user_info_update(this_user["user"], {
             "events": this_user["events"],
             "identities": this_user["identities"],
             "domains": this_user["domains"]
@@ -292,7 +292,7 @@ class UserData:
     def new_user_added(self, data):
         if (user := data.get("user", None)) is None:
             return False
-        if (this_user := usercfg.user_info_load("users", user)) is None:
+        if (this_user := usercfg.user_info_load(user)) is None:
             return False
         this_user["user"] = user
         self.all_users[user] = this_user

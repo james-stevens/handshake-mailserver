@@ -1,10 +1,11 @@
 #! /bin/sh
 
-echo "=================== INITALIZING ==================="
+echo "=================== [$(date)] INITALIZING ==================="
 
 . /usr/local/bin/inc
 
-mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs ${BASE}/mailboxes
+mkdir -p ${BASE}/pems ${BASE}/rainloop ${BASE}/sasl2 ${BASE}/homedirs \
+	${BASE}/mailboxes ${BASE}/postfix/data/ ${BASE}/postfix/spool/
 chmod 755 ${BASE}/homedirs ${BASE}/mailboxes ${BASE}/rainloop
 
 for file in group passwd shadow
@@ -67,16 +68,9 @@ if ! test -f /etc/sasl2/smtpd.conf
 		} > /etc/sasl2/smtpd.conf
 	fi
 
-for dir in spool master data
-do
-	mkdir -p ${BASE}/postfix/${dir}
-	chown postfix:mail ${BASE}/postfix/${dir}
-done
-chown root:mail ${BASE}/postfix/spool
-chmod 755 ${BASE}/postfix/spool
 postfix set-permissions >/dev/null 2>&1
 
-
+chown -R postfix: ${BASE}/postfix/data
 for file in transport virtual
 do
 	pfx="${BASE}/postfix/data/${file}"
@@ -84,7 +78,6 @@ do
 	rm -f ${pfx}.lmdb
 	postmap ${BASE}/postfix/data/${file}
 done
-chown -R postfix: ${BASE}/postfix/.
 
 
 mkdir /run/nginx; chown nginx: /run/nginx
@@ -97,7 +90,12 @@ if ! test -f ${BASE}/rainloop/EMPTY
 RAINLOOP="${BASE}/rainloop/_data_/_default_"
 dst="${RAINLOOP}/configs/application.ini"
 src="/run/templates/application.ini"
-if ! test -f ${dst}; then cp -a ${src} ${dst}; fi
+tag="${RAINLOOP}/configs/.made_by_auto"
+if ! test -f ${dst} -a -f ${tag} || ! test ${dst} -nt ${tag}
+	then
+		cp -a ${src} ${dst}
+		touch -r ${dst} ${tag}
+	fi
 
 dst="${RAINLOOP}/domains/${POLICY_DEFAULT_MAIL_DOMAIN}.ini"
 src="/run/templates/webmail.localhost.ini"
@@ -106,5 +104,5 @@ if ! test -f ${dst}; then rm -f ${RAINLOOP}/domains/*; cp -a ${src} ${dst}; fi
 chmod 700 ${BASE}/rainloop
 chown -R rainloop: ${BASE}/rainloop
 
-echo "=================== STARTING ==================="
+echo "=================== [$(date)] STARTING ==================="
 exec /sbin/init
