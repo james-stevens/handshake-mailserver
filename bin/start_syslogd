@@ -10,7 +10,7 @@ if test "${SYSLOG_SERVER}"
 
 if test "${DEBUG_MODE}" = "Y" -o "${SYSLOG_STDOUT}" = "Y"
 	then
-		exec /sbin/syslogd -f /usr/local/etc/syslog_debug.conf -r -n
+		exec /bin/busybox syslogd -n -O -
 	fi
 
 mkdir -p /opt/data/logs

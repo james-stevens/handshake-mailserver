@@ -2,10 +2,10 @@
 
 ip="192.168.1.144"
 #	--read-only \
-#	--env DEBUG_MODE=Y \
-#	--env SYSLOG_STDOUT=Y \
 docker run \
 	-m 1g \
+	--env DEBUG_MODE=Y \
+	--env SYSLOG_STDOUT=Y \
 	--dns 192.168.8.110 \
 	-v /opt/data/handshake-mailserver:/opt/data \
 	-v /opt/github/handshake-mailserver/htdocs:/usr/local/htdocs \

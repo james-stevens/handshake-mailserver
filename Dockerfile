@@ -60,7 +60,7 @@ COPY config/php.ini /etc/php84/php.ini
 COPY cron/every_hour /etc/periodic/hourly/
 COPY cron/every_day /etc/periodic/daily/
 COPY cron/every_15min /etc/periodic/15min/
-RUN rm /etc/logrotate.d/* /etc/periodic/daily/sysklogd
+RUN rm /etc/logrotate.d/* /etc/periodic/daily/sysklogd /etc/syslog.conf
 COPY config/logrotate.conf /etc/logrotate.conf
 
 COPY bin /usr/local/bin/
