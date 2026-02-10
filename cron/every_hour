@@ -2,7 +2,7 @@
 
 . /usr/local/bin/inc
 
-svr_pem="${this_base}/pems/server.pem"
+svr_pem="${BASE}/pems/server.pem"
 svr_dst="/run/pems/server.pem"
 if test -f ${svr_pem} -a ${svr_pem} -nt ${svr_dst}
 	then
