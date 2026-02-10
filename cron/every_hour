@@ -2,12 +2,14 @@
 
 . /usr/local/bin/inc
 
-src="${BASE}/pems/server.pem"
-dst="/run/pems/server.pem"
-if test -s ${src} -a ${src} -n ${dst}
+svr_pem="${BASE}/pems/server.pem"
+svr_dst="/run/pems/server.pem"
+if test -f ${svr_pem} -a ${svr_pem} -nt ${svr_dst}
 	then
-		{
-		cp -av ${src} ${dst}
-		/usr/sbin/postfix reload
-		} | logger -t update_server_pem
+		cp -a ${svr_pem} ${svr_dst}
+		killall -HUP nginx
+		killall stunnel
+		postfix reload
 	fi
+
+find ${BASE}/service/reset_codes/. -mtime +0 -type f -delete
